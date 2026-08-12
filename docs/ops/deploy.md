@@ -1,6 +1,7 @@
 # Déploiement Manolya Pharma
 
-**Dépôt GitHub :** [https://github.com/Amikisawani/manolya-pharma](https://github.com/Amikisawani/manolya-pharma)
+**Dépôt GitHub :** [https://github.com/Amikisawani/manolya-pharma](https://github.com/Amikisawani/manolya-pharma)  
+**Branche déployable actuelle :** `release/p1` (à fusionner vers `main` sur GitHub si besoin)
 
 Guide opérationnel pour un pilote (Coolify, Forge, ou VPS Docker).
 
@@ -62,7 +63,7 @@ Ne jamais committer `.env` ni les dumps de backup.
 
 1. Nouvelle ressource → **Public repository**  
    `https://github.com/Amikisawani/manolya-pharma`  
-   branche `main`, build pack **Dockerfile**.
+   branche `release/p1` (ou `main` après merge), build pack **Dockerfile**.
 2. Ajouter services **PostgreSQL 16** + **Redis**.
 3. Injecter les variables ci-dessus (`APP_KEY` générée, `APP_URL` = domaine Coolify).
 4. Le `Dockerfile` exécute déjà `migrate` + caches au démarrage.
