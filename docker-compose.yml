@@ -1,0 +1,76 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: manolya-app
+    ports:
+      - "${APP_PORT:-8080}:80"
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:${APP_PORT:-8080}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: manolya
+      DB_USERNAME: manolya
+      DB_PASSWORD: secret
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SCOUT_DRIVER: meilisearch
+      MEILISEARCH_HOST: http://meilisearch:7700
+      MEILISEARCH_KEY: masterKey
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      QUEUE_CONNECTION: redis
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - postgres
+      - redis
+      - meilisearch
+      - mailpit
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: manolya-postgres
+    environment:
+      POSTGRES_DB: manolya
+      POSTGRES_USER: manolya
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "${FORWARD_DB_PORT:-5432}:5432"
+    volumes:
+      - manolya_pg:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: manolya-redis
+    ports:
+      - "${FORWARD_REDIS_PORT:-6379}:6379"
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.11
+    container_name: manolya-meilisearch
+    environment:
+      MEILI_MASTER_KEY: masterKey
+      MEILI_ENV: development
+    ports:
+      - "${FORWARD_MEILI_PORT:-7700}:7700"
+    volumes:
+      - manolya_meili:/meili_data
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: manolya-mailpit
+    ports:
+      - "${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025"
+      - "${FORWARD_MAILPIT_PORT:-1025}:1025"
+
+volumes:
+  manolya_pg:
+  manolya_meili:
