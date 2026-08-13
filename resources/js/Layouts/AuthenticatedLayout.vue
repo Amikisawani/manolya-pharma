@@ -43,13 +43,13 @@ const isActive = (pattern: string) => {
     <div class="min-h-screen">
         <div class="flex min-h-screen">
             <aside
-                class="hidden w-[15.5rem] shrink-0 flex-col lg:flex"
+                class="hidden w-[15.5rem] shrink-0 flex-col print:hidden lg:flex"
                 style="background: var(--mp-sidebar)"
             >
                 <div class="px-5 pb-6 pt-8">
                     <div class="mp-display text-[1.65rem] leading-none text-[color:var(--mp-sidebar-active)]">Manolya</div>
                     <div class="mt-2 text-[0.65rem] font-medium uppercase tracking-[0.28em]" style="color: var(--mp-sidebar-muted)">
-                        Pharma · Congo
+                        Pharma
                     </div>
                     <div class="mt-5 border-t pt-4 text-xs" style="border-color: #24302a; color: var(--mp-sidebar-muted)">
                         {{ pharmacy }}
@@ -84,7 +84,7 @@ const isActive = (pattern: string) => {
 
             <div class="flex min-w-0 flex-1 flex-col">
                 <header
-                    class="flex items-center justify-between border-b px-4 py-3 lg:px-10"
+                    class="flex items-center justify-between border-b px-4 py-3 print:hidden lg:px-10"
                     style="border-color: var(--mp-line); background: rgba(247, 244, 239, 0.86); backdrop-filter: blur(8px)"
                 >
                     <div class="flex items-center gap-3">
@@ -96,13 +96,13 @@ const isActive = (pattern: string) => {
                             Menu
                         </button>
                         <div class="hidden text-xs uppercase tracking-[0.16em] text-[color:var(--mp-faint)] sm:block">
-                            Franc congolais (Fc)
+                            Franc (Fc)
                         </div>
                     </div>
                     <Link :href="route('pos.index')" class="mp-btn mp-btn-primary">Ouvrir la caisse</Link>
                 </header>
 
-                <div v-if="showingMobile" class="border-b px-3 py-3 lg:hidden" style="border-color: var(--mp-line); background: #fffcf7">
+                <div v-if="showingMobile" class="border-b px-3 py-3 print:hidden lg:hidden" style="border-color: var(--mp-line); background: #fffcf7">
                     <Link
                         v-for="item in nav"
                         :key="item.route"
@@ -115,21 +115,21 @@ const isActive = (pattern: string) => {
                     </Link>
                 </div>
 
-                <header v-if="$slots.header" class="px-4 pb-1 pt-8 lg:px-10">
+                <header v-if="$slots.header" class="px-4 pb-1 pt-8 print:hidden lg:px-10">
                     <slot name="header" />
                 </header>
 
-                <main class="flex-1 px-4 py-5 lg:px-10 lg:py-7">
+                <main class="flex-1 px-4 py-5 print:p-0 lg:px-10 lg:py-7">
                     <div
                         v-if="flashSuccess"
-                        class="mb-5 border px-4 py-3 text-sm"
+                        class="mb-5 border px-4 py-3 text-sm print:hidden"
                         style="border-color: #a8d5c0; background: var(--mp-accent-soft); color: var(--mp-accent)"
                     >
                         {{ flashSuccess }}
                     </div>
                     <div
                         v-if="flashError"
-                        class="mb-5 border px-4 py-3 text-sm"
+                        class="mb-5 border px-4 py-3 text-sm print:hidden"
                         style="border-color: #f0c4c0; background: #fbebe9; color: var(--mp-danger)"
                     >
                         {{ flashError }}

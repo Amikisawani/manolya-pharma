@@ -8,11 +8,11 @@ import { Link } from '@inertiajs/vue3';
             <Link href="/" class="inline-block">
                 <div class="mp-display text-5xl leading-none text-[color:var(--mp-ink)]">Manolya</div>
                 <div class="mt-2 text-[0.7rem] font-semibold uppercase tracking-[0.32em] text-[color:var(--mp-faint)]">
-                    Pharma · Congo
+                    Pharma
                 </div>
             </Link>
             <p class="mt-8 max-w-md text-sm leading-relaxed text-[color:var(--mp-muted)]">
-                Gestion d’officine claire, traçable et pensée pour le marché congolais.
+                Gestion d’officine claire et traçable.
             </p>
         </div>
 

@@ -36,7 +36,7 @@ class PosController extends Controller
 
         return Inertia::render('Pos/Index', [
             'warehouse' => $warehouse,
-            'currency' => $user?->tenant?->default_currency ?? 'CDF',
+            'currencyCode' => $user?->tenant?->default_currency ?? 'CDF',
             'openSession' => $openSession,
             'warehouses' => Warehouse::query()->orderBy('name')->get(['id', 'name', 'site_id']),
         ]);

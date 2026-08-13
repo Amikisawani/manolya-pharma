@@ -68,11 +68,11 @@ class SaleController extends Controller
             'lines.product:id,commercial_name,sku',
             'lines.batch:id,lot_number,expires_at',
             'payments',
-            'cashier:id,name',
+            'cashier:id,name,email,phone',
             'site:id,name',
             'warehouse:id,name',
             'returns.lines',
-            'cashRegisterSession:id,number,status',
+            'cashRegisterSession:id,number,status,opened_at',
         ]);
 
         $canRefund = $request->user()?->can('refund', $sale) ?? false;

@@ -7,19 +7,35 @@ type CurrencyShare = {
     rates: { USD: number; EUR: number };
 };
 
+const defaults: CurrencyShare = {
+    code: 'CDF',
+    symbol: 'Fc',
+    rates: { USD: 2350, EUR: 2702.5 },
+};
+
+function normalizeCurrency(shared: unknown): CurrencyShare {
+    if (!shared || typeof shared !== 'object') {
+        return defaults;
+    }
+
+    const value = shared as Partial<CurrencyShare> & { rates?: Partial<CurrencyShare['rates']> };
+
+    return {
+        code: value.code ?? defaults.code,
+        symbol: value.symbol ?? defaults.symbol,
+        rates: {
+            USD: Number(value.rates?.USD ?? defaults.rates.USD) || defaults.rates.USD,
+            EUR: Number(value.rates?.EUR ?? defaults.rates.EUR) || defaults.rates.EUR,
+        },
+    };
+}
+
 export function useMoney() {
     const page = usePage();
 
-    const currency = computed<CurrencyShare>(() => {
-        const shared = (page.props as { currency?: CurrencyShare }).currency;
-        return (
-            shared ?? {
-                code: 'CDF',
-                symbol: 'Fc',
-                rates: { USD: 2850, EUR: 3100 },
-            }
-        );
-    });
+    const currency = computed<CurrencyShare>(() =>
+        normalizeCurrency((page.props as { currency?: unknown }).currency),
+    );
 
     const formatFc = (amount: string | number | null | undefined): string => {
         const n = Number(amount || 0);

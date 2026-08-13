@@ -44,7 +44,11 @@ class HandleInertiaRequests extends Middleware
             'currency' => [
                 'code' => $user?->tenant?->default_currency ?? config('currency.default', 'CDF'),
                 'symbol' => config('currency.symbol', 'Fc'),
-                'rates' => config('currency.rates', ['USD' => 2850, 'EUR' => 3100]),
+                'rates' => config('currency.rates', ['USD' => 2350, 'EUR' => 2702.5]),
+            ],
+            'sentry' => [
+                'environment' => config('sentry.environment') ?: config('app.env'),
+                'release' => config('sentry.release'),
             ],
         ];
     }

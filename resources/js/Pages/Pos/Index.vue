@@ -6,7 +6,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 const props = defineProps<{
     warehouse: { id: string; name: string } | null;
-    currency: string;
+    currencyCode: string;
     openSession: Record<string, any> | null;
     warehouses: Array<{ id: string; name: string; site_id: string }>;
 }>();

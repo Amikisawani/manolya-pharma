@@ -1,15 +1,14 @@
 # Manolya Pharma
 
-Plateforme de gestion pharmaceutique multi-tenant (Laravel 13 + Breeze Inertia Vue TypeScript) destinée aux officines en République du Congo.
+Gestion d’officine claire et traçable. Stack Laravel 13 + Inertia Vue TypeScript + PostgreSQL.
 
 ## Prérequis
 
-- PHP 8.3+
+- PHP 8.4+
 - Composer 2
-- Node.js 20+
-- PostgreSQL 16 (ou SQLite pour les tests)
-- Redis (optionnel en local)
-- Docker + Docker Compose (optionnel)
+- Node.js 22+
+- PostgreSQL 16
+- Redis (recommandé en prod ; optionnel en local)
 
 ## Installation rapide (local)
 
@@ -26,10 +25,12 @@ DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
 DB_DATABASE=manolya
-DB_USERNAME=manolya
-DB_PASSWORD=secret
-QUEUE_CONNECTION=database
+DB_USERNAME=postgres
+DB_PASSWORD=
+QUEUE_CONNECTION=sync
 SCOUT_DRIVER=collection
+FX_USD_CDF=2350
+FX_EUR_CDF=2702.5
 ```
 
 Puis :
@@ -37,70 +38,34 @@ Puis :
 ```bash
 php artisan migrate --seed
 npm install
-npm run build
+npm run dev
 php artisan serve
 ```
 
-Compte démo :
+- App : http://127.0.0.1:8000 (redirige vers `/login`)
+- Compte démo : `owner@manolya.test` / `password`
 
-- Email : `owner@manolya.test`
-- Mot de passe : `password`
+## Docker / Coolify
 
-## Docker Compose
+Voir [`docs/ops/deploy.md`](docs/ops/deploy.md). Repo : https://github.com/Amikisawani/manolya-pharma (`main`).
 
 ```bash
 docker compose up -d --build
 docker compose exec app php artisan migrate --seed
 ```
 
-Services inclus :
+## Modules livrés (pilote)
 
-| Service     | Port par défaut |
-|-------------|-----------------|
-| App         | 8080            |
-| PostgreSQL  | 5432            |
-| Redis       | 6379            |
-| Meilisearch | 7700            |
-| Mailpit UI  | 8025            |
+- Dashboard, POS + sessions de caisse, retours
+- Catalogue (CSV/Excel), stock FEFO, achats, inventaires
+- Finance, PDF journalier/mensuel, documents OCR/FTS
+- Audit, alertes, SMS/MoMo adapters, Sentry (DSN optionnel)
+- Ticket imprimable (cadre facture + identité caissier)
 
-## Modules
-
-- Dashboard exécutif
-- POS / ventes
-- Catalogue produits
-- Stock & lots (FEFO)
-- Achats & réceptions
-- Inventaires
-- Finance & dépenses
-- Documents (OCR stub)
-- Audit & alertes
-- 2FA (Google Authenticator)
-
-## Planification
-
-Les jobs sont déclarés dans `routes/console.php` :
-
-- `ScanBatchExpiriesJob` — quotidien 01:00
-- `DetectStockThresholdsJob` — horaire
-- `GenerateDailyReportJob` — quotidien 06:00
-- `GenerateMonthlyReportJob` — mensuel
-
-Lancez le scheduler :
-
-```bash
-php artisan schedule:work
-```
+État détaillé : [`docs/ETAT-AVANCEMENT.md`](docs/ETAT-AVANCEMENT.md)
 
 ## Tests
 
 ```bash
 php artisan test
 ```
-
-## Frontend
-
-```bash
-npm run dev
-```
-
-Stack UI : Vue 3 + Inertia + Tailwind, labels en français, identité visuelle Manolya (teal).

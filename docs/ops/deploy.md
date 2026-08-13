@@ -42,8 +42,8 @@ MAIL_PASSWORD=...
 MAIL_FROM_ADDRESS=noreply@example.com
 
 CURRENCY_DEFAULT=CDF
-FX_USD_CDF=2850
-FX_EUR_CDF=3100
+FX_USD_CDF=2350
+FX_EUR_CDF=2702.5
 
 SCOUT_DRIVER=collection
 
@@ -52,9 +52,10 @@ SMS_ENABLED=false
 SMS_DRIVER=log
 MOMO_DEFAULT_PROVIDER=stub
 
-# Optionnel Phase 4
-# SENTRY_LARAVEL_DSN=
-# SENTRY_TRACES_SAMPLE_RATE=0.1
+# Sentry — voir docs/ops/sentry.md (no-op si vide ; rebuild assets si VITE_*)
+SENTRY_LARAVEL_DSN=
+SENTRY_TRACES_SAMPLE_RATE=0.1
+VITE_SENTRY_DSN=
 ```
 
 Ne jamais committer `.env` ni les dumps de backup.

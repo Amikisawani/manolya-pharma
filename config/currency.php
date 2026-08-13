@@ -10,7 +10,7 @@ return [
 
     'rates' => [
         // Combien de CDF pour 1 unité de devise étrangère
-        'USD' => (float) env('FX_USD_CDF', 2850),
-        'EUR' => (float) env('FX_EUR_CDF', 3100),
+        'USD' => (float) env('FX_USD_CDF', 2350),
+        'EUR' => (float) env('FX_EUR_CDF', 2702.5),
     ],
 ];
