@@ -7,7 +7,7 @@ Guide opérationnel pour un pilote (Coolify, Forge, ou VPS Docker).
 
 ## Prérequis
 
-- PHP 8.3+, Composer, Node 22+
+- PHP 8.4+, Composer, Node 22+
 - PostgreSQL 16
 - Redis (cache / files d’attente)
 - Reverse proxy HTTPS (Caddy / Traefik / Nginx)
@@ -76,7 +76,7 @@ Ne jamais committer `.env` ni les dumps de backup.
 
 ## Laravel Forge
 
-- Site PHP 8.3, Nginx, PostgreSQL managé ou externe.
+- Site PHP 8.4, Nginx, PostgreSQL managé ou externe.
 - Repo : `Amikisawani/manolya-pharma`
 - Deploy script typique :
 

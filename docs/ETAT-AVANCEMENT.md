@@ -44,7 +44,7 @@ Elle couvre le cycle opérationnel d’une pharmacie moderne :
 
 | Couche | Techno |
 |--------|--------|
-| Backend | Laravel 13, PHP 8.3+, PostgreSQL, Sanctum, Spatie Permission |
+| Backend | Laravel 13, PHP 8.4+, PostgreSQL, Sanctum, Spatie Permission |
 | Frontend | Vue 3, TypeScript, Inertia, Tailwind |
 | Async / search | Queues, Scheduler, Scout (Meilisearch prêt) |
 | Ops | Docker Compose, GitHub Actions (base) |

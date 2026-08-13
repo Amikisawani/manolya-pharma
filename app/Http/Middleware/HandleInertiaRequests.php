@@ -50,6 +50,10 @@ class HandleInertiaRequests extends Middleware
                 'environment' => config('sentry.environment') ?: config('app.env'),
                 'release' => config('sentry.release'),
             ],
+            'sentry' => [
+                'environment' => config('sentry.environment') ?: config('app.env'),
+                'release' => config('sentry.release'),
+            ],
         ];
     }
 }

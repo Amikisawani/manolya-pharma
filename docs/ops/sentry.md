@@ -31,7 +31,7 @@ Sur Coolify / Forge : injecter ces variables, puis **rebuild** les assets (`npm 
 ## Vérification
 
 1. Laisser les DSN vides → l’app tourne normalement, aucun envoi.
-2. Renseigner les DSN en staging → provoquer une exception test (`php artisan sentry:test` si disponible, ou une route temporaire) et confirmer l’événement dans Sentry.
+2. Renseigner les DSN en staging → `php artisan sentry:test` (si disponible) et confirmer l’événement dans Sentry.
 3. Frontend : erreur Vue non catchée → événement navigateur dans le projet JS.
 
 ## Docs liées
