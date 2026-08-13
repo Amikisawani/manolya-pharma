@@ -6,7 +6,7 @@ COPY resources ./resources
 COPY public ./public
 RUN npm ci && npm run build
 
-FROM php:8.3-cli-bookworm
+FROM php:8.4-cli-bookworm
 
 RUN apt-get update && apt-get install -y \
     git unzip libpq-dev libzip-dev libicu-dev \

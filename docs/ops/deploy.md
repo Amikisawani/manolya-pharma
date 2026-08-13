@@ -7,7 +7,7 @@ Guide opérationnel pour un pilote (Coolify, Forge, ou VPS Docker).
 
 ## Prérequis
 
-- PHP 8.3+, Composer, Node 22+
+- PHP 8.4+, Composer, Node 22+
 - PostgreSQL 16
 - Redis (cache / files d’attente)
 - Reverse proxy HTTPS (Caddy / Traefik / Nginx)
@@ -52,9 +52,10 @@ SMS_ENABLED=false
 SMS_DRIVER=log
 MOMO_DEFAULT_PROVIDER=stub
 
-# Optionnel Phase 4
-# SENTRY_LARAVEL_DSN=
-# SENTRY_TRACES_SAMPLE_RATE=0.1
+# Sentry — voir docs/ops/sentry.md (no-op si vide ; rebuild assets si VITE_*)
+SENTRY_LARAVEL_DSN=
+SENTRY_TRACES_SAMPLE_RATE=0.1
+VITE_SENTRY_DSN=
 ```
 
 Ne jamais committer `.env` ni les dumps de backup.
@@ -75,7 +76,7 @@ Ne jamais committer `.env` ni les dumps de backup.
 
 ## Laravel Forge
 
-- Site PHP 8.3, Nginx, PostgreSQL managé ou externe.
+- Site PHP 8.4, Nginx, PostgreSQL managé ou externe.
 - Repo : `Amikisawani/manolya-pharma`
 - Deploy script typique :
 

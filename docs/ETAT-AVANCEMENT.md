@@ -1,7 +1,7 @@
 # MANOLYA PHARMA — Concept & état d’avancement
 
 > Document de pilotage produit/technique  
-> Dernière mise à jour : 2026-08-12  
+> Dernière mise à jour : 2026-08-13  
 > Marché cible : Congo (RDC) — devise principale **Fc (CDF)**
 
 ---
@@ -44,7 +44,7 @@ Elle couvre le cycle opérationnel d’une pharmacie moderne :
 
 | Couche | Techno |
 |--------|--------|
-| Backend | Laravel 13, PHP 8.3+, PostgreSQL, Sanctum, Spatie Permission |
+| Backend | Laravel 13, PHP 8.4+, PostgreSQL, Sanctum, Spatie Permission |
 | Frontend | Vue 3, TypeScript, Inertia, Tailwind |
 | Async / search | Queues, Scheduler, Scout (Meilisearch prêt) |
 | Ops | Docker Compose, GitHub Actions (base) |
@@ -120,7 +120,7 @@ Conception détaillée : [`docs/design/`](./design/)
 - [x] Ports IA / SMS (stubs)
 - [x] CI GitHub Actions (Postgres service + Feature tests)
 - [x] Docs déploiement + script backup Postgres
-- [ ] Sentry branché
+- [x] Sentry branché (Laravel + Vue ; DSN prod à injecter — `docs/ops/sentry.md`)
 - [x] SMS réel (adapters Orange/Airtel ; credentials à brancher)
 - [x] Gateways Mobile Money (Orange/Airtel/MTN ; stub sans credentials)
 - [ ] Durcissement perf / backups actifs en prod + monitoring
@@ -150,7 +150,7 @@ Conception détaillée : [`docs/design/`](./design/)
 ### P2 — SaaS & scale
 1. Onboarding multi-tenants (Super Admin)
 2. Multi-sites / multi-entrepôts avancé (transferts, reporting consolidé)
-3. Sentry + Horizon + Reverb temps réel
+3. [x] Sentry (Laravel + Vue) — reste : Horizon + Reverb temps réel
 4. Meilisearch en prod (recherche catalogue/POS)
 5. Paramétrage fiscal / numérotation factures Congo
 
@@ -178,7 +178,7 @@ Le logiciel sera considéré **prêt production officines** quand :
 
 - [ ] Un parcours complet achat → stock → vente → ticket → finance est stable en prod
 - [x] Retours caisse + clôture de caisse (implémentés ; à valider en pilote)
-- [ ] Backups + monitoring + Sentry actifs
+- [ ] Backups + monitoring + Sentry actifs (code Sentry prêt ; DSN + backups cron prod)
 - [x] PDF journalier / mensuel générés + e-mail propriétaire (à valider SMTP prod)
 - [ ] Au moins un gateway Mobile Money réel testé
 - [x] Jeu de tests Feature couvrant les flux critiques (local ; CI Postgres branchée)
@@ -187,4 +187,4 @@ Le logiciel sera considéré **prêt production officines** quand :
 
 ## 7. Prochaine action proposée
 
-**P0 + P1 terminés.** Brancher Coolify/Forge sur [Amikisawani/manolya-pharma](https://github.com/Amikisawani/manolya-pharma), puis Sentry ou P2 SaaS.
+**P0 + P1 terminés. Sentry code branché.** Injecter les DSN en prod (`docs/ops/sentry.md`), puis Horizon/Reverb ou onboarding Super Admin (P2).
