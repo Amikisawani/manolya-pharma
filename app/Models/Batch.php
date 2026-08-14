@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\TrimmedDecimal;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -43,8 +44,8 @@ class Batch extends Model
         return [
             'manufactured_at' => 'date',
             'expires_at' => 'date',
-            'quantity_on_hand' => 'decimal:3',
-            'unit_cost' => 'decimal:2',
+            'quantity_on_hand' => TrimmedDecimal::class.':3',
+            'unit_cost' => TrimmedDecimal::class.':2',
         ];
     }
 

@@ -64,7 +64,7 @@ const onFile = (e: Event) => {
         </template>
 
         <p class="mb-4 text-xs text-[color:var(--mp-faint)]">
-            Colonnes : sku;commercial_name;generic_name;barcode;manufacturer;purchase_price;sale_price;currency_code;min_stock;critical_stock;allocation_strategy;category
+            Colonnes : sku;commercial_name;…;min_stock;critical_stock;… · stock auto à l’import (optionnel : quantite / lot / expiration)
             · Formats .xlsx / .csv (séparateur ;)
         </p>
 

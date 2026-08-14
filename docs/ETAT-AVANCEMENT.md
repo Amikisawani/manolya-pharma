@@ -190,7 +190,8 @@ Le logiciel sera considéré **prêt production officines** quand :
 **Pilote logiciel finalisé (P0 + P1 + polish).** Livré sur [`main`](https://github.com/Amikisawani/manolya-pharma) :
 - POS / sessions / retours, PDF, Excel, OCR/FTS, SMS/MoMo adapters, Sentry
 - Ticket imprimable (cadre facture + identité caissier)
+- **Clôture caisse → PDF détaillé + e-mail owners** (auto)
 - Accueil → login direct · copy « Gestion d’officine claire et traçable. »
 
-**Go-live ops :** Coolify sur `main` + DSN Sentry + SMTP + cron backup (`docs/ops/deploy.md`).  
-**Suite produit (P2) :** Super Admin multi-tenants, Horizon/Reverb, Meilisearch, fiscal.
+**Go-live ops :** Coolify sur `main` + DSN Sentry + SMTP Brevo (SPF/DKIM) + cron backup (`docs/ops/deploy.md`).  
+**Suite produit (P2) :** Super Admin multi-tenants, Horizon/Reverb, Meilisearch, fiscal · autres rapports d’opération sur le même pattern.

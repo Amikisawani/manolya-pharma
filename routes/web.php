@@ -53,6 +53,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('/pos/sessions/{session}/close', [CashRegisterSessionController::class, 'close'])->name('pos.sessions.close');
     Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
     Route::get('/sales/export', [SaleController::class, 'export'])->name('sales.export');
+    Route::get('/sales/{sale}/ticket.pdf', [SaleController::class, 'ticket'])->name('sales.ticket');
     Route::get('/sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
     Route::post('/sales/{sale}/returns', [SaleReturnController::class, 'store'])->name('sales.returns.store');
 

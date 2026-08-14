@@ -24,6 +24,7 @@
 <body>
     @php
         $fmt = fn ($v) => number_format((float) $v, 0, ',', ' ');
+        $fmtQty = fn ($v) => number_format((float) $v, 3, ',', '');
     @endphp
 
     <div class="brand">Manolya Pharma</div>
@@ -61,7 +62,7 @@
             @foreach ($report['top_products'] as $p)
                 <tr>
                     <td>{{ $p['name'] }}</td>
-                    <td>{{ $p['qty'] }}</td>
+                    <td>{{ $fmtQty($p['qty']) }}</td>
                     <td>{{ $fmt($p['revenue']) }} Fc</td>
                 </tr>
             @endforeach
@@ -80,7 +81,7 @@
                 <tr>
                     <td>{{ $p['sku'] }}</td>
                     <td>{{ $p['name'] }}</td>
-                    <td>{{ $p['qty'] }}</td>
+                    <td>{{ $fmtQty($p['qty']) }}</td>
                     <td>{{ $p['critical'] }}</td>
                 </tr>
             @endforeach

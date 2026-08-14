@@ -35,6 +35,32 @@ body {
         radial-gradient(ellipse 700px 400px at 100% 0%, rgba(154, 103, 0, 0.05), transparent 55%);
     color: var(--mp-ink);
     font-family: var(--font-sans);
+    scrollbar-width: thin;
+    scrollbar-color: #c4b8a8 transparent;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+    background: #d5cbbd;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover {
+    background: #b7aa98;
 }
 
 .mp-display {
@@ -214,3 +240,62 @@ body {
     border-radius: 2px;
     box-shadow: none;
 }
+
+/* Scrollbars — sidebar sombre */
+.mp-scroll-sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: #3a463f transparent;
+}
+
+.mp-scroll-sidebar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.mp-scroll-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 6px 0;
+}
+
+.mp-scroll-sidebar::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #2a3530 0%, #3a463f 100%);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.mp-scroll-sidebar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #3d9b6e 0%, #2f7a56 100%);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+/* Scrollbars — contenu clair */
+.mp-scroll-main {
+    scrollbar-width: thin;
+    scrollbar-color: #c4b8a8 transparent;
+}
+
+.mp-scroll-main::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.mp-scroll-main::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.mp-scroll-main::-webkit-scrollbar-thumb {
+    background: #d5cbbd;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.mp-scroll-main::-webkit-scrollbar-thumb:hover {
+    background: #b7aa98;
+}
+
+.mp-scroll-main::-webkit-scrollbar-corner {
+    background: transparent;
+}
+

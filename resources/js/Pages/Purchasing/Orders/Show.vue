@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MoneyAmount from '@/Components/MoneyAmount.vue';
+import { formatQty } from '@/Composables/useQuantity';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
 const props = defineProps<{
@@ -63,8 +64,8 @@ const receive = () => {
                 <tbody>
                     <tr v-for="line in order.lines" :key="line.id">
                         <td>{{ line.product?.commercial_name }}</td>
-                        <td>{{ line.quantity_ordered }}</td>
-                        <td>{{ line.quantity_received }}</td>
+                        <td>{{ formatQty(line.quantity_ordered) }}</td>
+                        <td>{{ formatQty(line.quantity_received) }}</td>
                         <td><MoneyAmount :amount="line.unit_cost" size="sm" /></td>
                     </tr>
                 </tbody>

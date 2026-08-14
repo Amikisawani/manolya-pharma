@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\TrimmedDecimal;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -30,7 +31,7 @@ class StockAdjustment extends Model
     protected function casts(): array
     {
         return [
-            'quantity_delta' => 'decimal:3',
+            'quantity_delta' => TrimmedDecimal::class.':3',
             'approved_at' => 'datetime',
         ];
     }

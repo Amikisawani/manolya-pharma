@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\TrimmedDecimal;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -42,10 +43,10 @@ class Product extends Model
     protected function casts(): array
     {
         return [
-            'purchase_price' => 'decimal:2',
-            'sale_price' => 'decimal:2',
-            'min_stock' => 'decimal:3',
-            'critical_stock' => 'decimal:3',
+            'purchase_price' => TrimmedDecimal::class.':2',
+            'sale_price' => TrimmedDecimal::class.':2',
+            'min_stock' => TrimmedDecimal::class.':3',
+            'critical_stock' => TrimmedDecimal::class.':3',
         ];
     }
 

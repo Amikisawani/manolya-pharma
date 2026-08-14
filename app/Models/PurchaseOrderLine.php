@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\TrimmedDecimal;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -24,9 +25,9 @@ class PurchaseOrderLine extends Model
     protected function casts(): array
     {
         return [
-            'quantity_ordered' => 'decimal:3',
-            'quantity_received' => 'decimal:3',
-            'unit_cost' => 'decimal:2',
+            'quantity_ordered' => TrimmedDecimal::class.':3',
+            'quantity_received' => TrimmedDecimal::class.':3',
+            'unit_cost' => TrimmedDecimal::class.':2',
         ];
     }
 

@@ -63,6 +63,59 @@ class ProductSpreadsheetTest extends TestCase
 
         $this->assertNotNull(Product::query()->where('sku', 'TEST-XLSX-01')->first()?->category_id);
 
+        $product = Product::query()->where('sku', 'TEST-XLSX-01')->firstOrFail();
+        $this->assertDatabaseHas('batches', [
+            'product_id' => $product->id,
+        ]);
+        $this->assertTrue(
+            (float) \App\Models\Batch::query()->where('product_id', $product->id)->value('quantity_on_hand') > 0
+        );
+
+        @unlink($path);
+    }
+
+    public function test_owner_can_import_catalogue_with_french_headers(): void
+    {
+        $this->seed();
+        Storage::fake('local');
+
+        $owner = User::query()->where('email', 'owner@manolya.test')->firstOrFail();
+        $path = storage_path('app/temp/test-import-fr.xlsx');
+        if (! is_dir(dirname($path))) {
+            mkdir(dirname($path), 0755, true);
+        }
+
+        $writer = new XlsxWriter;
+        $writer->openToFile($path);
+        $writer->addRow(Row::fromValues([
+            'Nom commercial', 'SKU', 'DCI / générique', 'Catégorie', 'Fournisseur préféré',
+            'Prix d’achat', 'Prix de vente', 'STOCK MIN', 'Stock critique', 'Stratégie d’allocation',
+        ]));
+        $writer->addRow(Row::fromValues([
+            'Coartem 20/120', 'COA-001', 'Artéméther/Luméfantrine', 'Traitement du paludisme', 'Novartis',
+            '1500', '2500', '10', '5', 'fefo',
+        ]));
+        $writer->close();
+
+        $upload = new UploadedFile($path, 'catalogue-fr.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+
+        $this->actingAs($owner)
+            ->post(route('catalog.products.import'), ['file' => $upload])
+            ->assertRedirect(route('catalog.products.index'));
+
+        $this->assertDatabaseHas('products', [
+            'sku' => 'COA-001',
+            'commercial_name' => 'Coartem 20/120',
+            'purchase_price' => '1500',
+            'sale_price' => '2500',
+        ]);
+
+        $product = Product::query()->where('sku', 'COA-001')->firstOrFail();
+        $this->assertDatabaseHas('batches', [
+            'product_id' => $product->id,
+            'lot_number' => 'IMP-COA-001',
+        ]);
+
         @unlink($path);
     }
 

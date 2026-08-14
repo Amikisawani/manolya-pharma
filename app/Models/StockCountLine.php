@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\TrimmedDecimal;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,9 +26,9 @@ class StockCountLine extends Model
     protected function casts(): array
     {
         return [
-            'expected_qty' => 'decimal:3',
-            'counted_qty' => 'decimal:3',
-            'variance' => 'decimal:3',
+            'expected_qty' => TrimmedDecimal::class.':3',
+            'counted_qty' => TrimmedDecimal::class.':3',
+            'variance' => TrimmedDecimal::class.':3',
         ];
     }
 

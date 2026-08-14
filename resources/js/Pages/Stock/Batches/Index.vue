@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MoneyAmount from '@/Components/MoneyAmount.vue';
+import { formatQty } from '@/Composables/useQuantity';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
@@ -89,7 +90,7 @@ const submitAdjust = () => adjustForm.post(route('stock.adjustments.store'), { o
                     <td class="font-medium">{{ batch.lot_number }}</td>
                     <td>{{ batch.product?.commercial_name }}</td>
                     <td>{{ batch.warehouse?.name }}</td>
-                    <td class="tabular-nums">{{ batch.quantity_on_hand }}</td>
+                    <td class="tabular-nums">{{ formatQty(batch.quantity_on_hand) }}</td>
                     <td><MoneyAmount :amount="batch.unit_cost" size="sm" /></td>
                     <td>{{ batch.expires_at }}</td>
                     <td>

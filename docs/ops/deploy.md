@@ -113,9 +113,16 @@ Prod : pas de bind-mount du code, monter `storage` + backups, `APP_DEBUG=false`.
 - [ ] Compte owner créé (pas le mot de passe démo)
 - [ ] Backup PostgreSQL planifié (voir `docs/ops/backups.md`)
 - [ ] Worker + scheduler actifs
-- [ ] Parcours : ouvrir caisse → vente → ticket → clôture
+- [ ] Parcours : ouvrir caisse → vente → ticket → clôture (PDF e-mail auto)
 - [ ] Parcours : commande → réception → inventaire
-- [ ] E-mails sortants testés
+- [ ] E-mails sortants testés (Brevo)
+
+## E-mail (Brevo) — moins de spam
+
+1. Expéditeur vérifié dans Brevo (= `MAIL_FROM_ADDRESS`).
+2. Idéal : domaine propre + **SPF + DKIM** (Brevo → Domaines) plutôt qu’un `@icloud.com` / `@gmail.com` long terme.
+3. Variables : `MAIL_MAILER=smtp`, `MAIL_HOST=smtp-relay.brevo.com`, `MAIL_PORT=587`, user/clé SMTP.
+4. Worker queue actif : la clôture de caisse envoie le PDF en job (`SendCashSessionClosedReportJob`).
 
 ## Rollback rapide
 

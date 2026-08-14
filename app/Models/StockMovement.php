@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\TrimmedDecimal;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -52,8 +53,8 @@ class StockMovement extends Model
     protected function casts(): array
     {
         return [
-            'quantity' => 'decimal:3',
-            'unit_cost' => 'decimal:2',
+            'quantity' => TrimmedDecimal::class.':3',
+            'unit_cost' => TrimmedDecimal::class.':2',
             'occurred_at' => 'datetime',
             'created_at' => 'datetime',
         ];

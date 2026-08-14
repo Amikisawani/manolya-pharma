@@ -55,6 +55,11 @@ class CashRegisterSession extends Model
         return $this->belongsTo(Site::class);
     }
 
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class);

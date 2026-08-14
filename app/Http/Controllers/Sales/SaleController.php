@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Sales;
 
 use App\Domain\Reporting\Services\OperationalSpreadsheetExport;
+use App\Domain\Sales\Services\SaleTicketPdfGenerator;
 use App\Http\Controllers\Controller;
 use App\Models\Sale;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -84,6 +86,21 @@ class SaleController extends Controller
                 ->where('opened_by', $request->user()?->id)
                 ->where('status', \App\Models\CashRegisterSession::STATUS_OPEN)
                 ->exists(),
+            'ticketPdfUrl' => route('sales.ticket', $sale),
+        ]);
+    }
+
+    public function ticket(Request $request, Sale $sale, SaleTicketPdfGenerator $pdf): HttpResponse
+    {
+        $this->authorize('view', $sale);
+
+        $filename = 'facture-'.$sale->number.'.pdf';
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
+
+        return response($pdf->raw($sale), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => $disposition.'; filename="'.$filename.'"',
+            'Cache-Control' => 'private, max-age=0, must-revalidate',
         ]);
     }
 }

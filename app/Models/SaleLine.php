@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\TrimmedDecimal;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -30,12 +31,12 @@ class SaleLine extends Model
     protected function casts(): array
     {
         return [
-            'quantity' => 'decimal:3',
-            'quantity_returned' => 'decimal:3',
-            'unit_price' => 'decimal:2',
-            'unit_cost' => 'decimal:2',
-            'discount_amount' => 'decimal:2',
-            'line_total' => 'decimal:2',
+            'quantity' => TrimmedDecimal::class.':3',
+            'quantity_returned' => TrimmedDecimal::class.':3',
+            'unit_price' => TrimmedDecimal::class.':2',
+            'unit_cost' => TrimmedDecimal::class.':2',
+            'discount_amount' => TrimmedDecimal::class.':2',
+            'line_total' => TrimmedDecimal::class.':2',
         ];
     }
 

@@ -66,11 +66,33 @@ class DemoTenantSeeder extends Seeder
             'payment_terms' => 'Net 30',
         ]);
 
-        $categories = [
-            'Antalgiques' => Category::query()->create(['tenant_id' => $tenant->id, 'name' => 'Antalgiques']),
-            'Antibiotiques' => Category::query()->create(['tenant_id' => $tenant->id, 'name' => 'Antibiotiques']),
-            'Vitamines' => Category::query()->create(['tenant_id' => $tenant->id, 'name' => 'Vitamines']),
-        ];
+        $categoryNames = config('pharmacy_categories.names', [
+            'Antalgiques (contre la douleur)',
+            'Antibiotiques',
+            'Vitamines',
+        ]);
+
+        $categories = [];
+        foreach ($categoryNames as $name) {
+            $categories[$name] = Category::query()->create([
+                'tenant_id' => $tenant->id,
+                'name' => $name,
+            ]);
+        }
+
+        $resolveCategory = function (string $key) use ($categories): Category {
+            if (isset($categories[$key])) {
+                return $categories[$key];
+            }
+
+            foreach ($categories as $name => $category) {
+                if (str_starts_with($name, $key)) {
+                    return $category;
+                }
+            }
+
+            return reset($categories);
+        };
 
         $products = [
             [
@@ -130,7 +152,7 @@ class DemoTenantSeeder extends Seeder
         foreach ($products as $item) {
             $product = Product::query()->create([
                 'tenant_id' => $tenant->id,
-                'category_id' => $categories[$item['category']]->id,
+                'category_id' => $resolveCategory($item['category'])->id,
                 'sku' => $item['sku'],
                 'commercial_name' => $item['commercial_name'],
                 'generic_name' => $item['generic_name'],

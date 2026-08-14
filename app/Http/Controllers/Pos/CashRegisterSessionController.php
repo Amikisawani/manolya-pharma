@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Pos;
 
 use App\Domain\Sales\Services\CashRegisterSessionService;
 use App\Http\Controllers\Controller;
+use App\Jobs\SendCashSessionClosedReportJob;
 use App\Models\CashRegisterSession;
 use App\Models\Sale;
 use App\Models\SaleReturn;
 use App\Models\Warehouse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -124,8 +126,12 @@ class CashRegisterSessionController extends Controller
             'closing_notes' => $data['closing_notes'] ?? null,
         ]);
 
+        DB::afterCommit(function () use ($session): void {
+            SendCashSessionClosedReportJob::dispatch((string) $session->id);
+        });
+
         return redirect()
             ->route('pos.sessions.show', $session)
-            ->with('success', 'Session de caisse clôturée.');
+            ->with('success', 'Session de caisse clôturée — rapport envoyé aux propriétaires.');
     }
 }

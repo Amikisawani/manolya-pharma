@@ -9,7 +9,6 @@ use App\Models\Product;
 use App\Models\Supplier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -146,13 +145,16 @@ class ProductController extends Controller
         }
 
         $path = $file->getRealPath();
-        $result = DB::transaction(fn () => $spreadsheet->importFromFile(
+        $result = $spreadsheet->importFromFile(
             $path,
             (string) $request->user()->tenant_id,
             $ext,
-        ));
+        );
 
         $message = "Import terminé : {$result['created']} créés, {$result['updated']} mis à jour";
+        if (($result['stocked'] ?? 0) > 0) {
+            $message .= ", {$result['stocked']} entrés en stock";
+        }
         if ($result['skipped'] > 0) {
             $message .= ", {$result['skipped']} ignorés";
         }

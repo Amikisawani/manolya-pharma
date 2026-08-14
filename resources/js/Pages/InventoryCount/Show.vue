@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { formatQty, toQtyNumber } from '@/Composables/useQuantity';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
 const props = defineProps<{
@@ -9,7 +10,7 @@ const props = defineProps<{
 const submitForm = useForm({
     lines: (props.count.lines || []).map((l: any) => ({
         id: l.id,
-        counted_qty: l.counted_qty ?? l.expected_qty ?? 0,
+        counted_qty: toQtyNumber(l.counted_qty ?? l.expected_qty ?? 0),
     })),
 });
 
@@ -66,7 +67,7 @@ const submitCount = () => submitForm.post(route('inventory.counts.submit', props
                 <tr v-for="(line, idx) in submitForm.lines" :key="line.id">
                     <td>{{ count.lines[idx]?.product?.commercial_name }}</td>
                     <td class="text-[color:var(--mp-muted)]">{{ count.lines[idx]?.batch?.lot_number ?? '—' }}</td>
-                    <td class="tabular-nums">{{ count.lines[idx]?.expected_qty }}</td>
+                    <td class="tabular-nums">{{ formatQty(count.lines[idx]?.expected_qty) }}</td>
                     <td>
                         <input
                             v-model.number="line.counted_qty"
@@ -78,7 +79,9 @@ const submitCount = () => submitForm.post(route('inventory.counts.submit', props
                     </td>
                     <td class="tabular-nums">
                         {{
-                            Number(line.counted_qty ?? 0) - Number(count.lines[idx]?.expected_qty ?? 0)
+                            formatQty(
+                                Number(line.counted_qty ?? 0) - Number(count.lines[idx]?.expected_qty ?? 0),
+                            )
                         }}
                     </td>
                 </tr>

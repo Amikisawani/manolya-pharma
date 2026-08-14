@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MoneyAmount from '@/Components/MoneyAmount.vue';
+import { formatQty } from '@/Composables/useQuantity';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
@@ -67,7 +68,7 @@ const isOut = (t: string) => t.startsWith('OUT_');
                     </td>
                     <td>{{ m.batch?.lot_number }}</td>
                     <td class="tabular-nums font-medium" :class="isOut(m.type) ? 'text-[color:var(--mp-danger)]' : 'text-[color:var(--mp-success)]'">
-                        {{ isOut(m.type) ? '−' : '+' }}{{ m.quantity }}
+                        {{ isOut(m.type) ? '−' : '+' }}{{ formatQty(m.quantity) }}
                     </td>
                     <td><MoneyAmount :amount="m.unit_cost" size="sm" :show-fx="false" /></td>
                     <td class="text-sm text-[color:var(--mp-muted)]">{{ m.user?.name ?? 'Système' }}</td>
