@@ -32,6 +32,17 @@ if [ -n "${APP_URL:-}" ]; then
   export APP_URL
 fi
 
+# Neon pooler (-pooler) casse les migrations Laravel (DDL en transaction).
+# Forcer l'endpoint Direct.
+if [ -n "${DB_URL:-}" ]; then
+  DB_URL="$(printf '%s' "$DB_URL" | sed 's/-pooler\././g')"
+  export DB_URL
+fi
+if [ -n "${DB_HOST:-}" ]; then
+  DB_HOST="$(printf '%s' "$DB_HOST" | sed 's/-pooler\././g')"
+  export DB_HOST
+fi
+
 echo "DB check: DB_HOST=${DB_HOST:-<empty>} DB_DATABASE=${DB_DATABASE:-<empty>} DB_URL_SET=$([ -n "${DB_URL:-}" ] && echo yes || echo no)"
 echo "APP_URL=${APP_URL:-<empty>}"
 
