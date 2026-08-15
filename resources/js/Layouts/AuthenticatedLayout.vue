@@ -2,31 +2,59 @@
 import { computed, ref } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
+type NavItem = {
+    label: string;
+    route: string;
+    match: string;
+    /** Une permission suffit (OR). Vide = toujours visible. */
+    permissions?: string[];
+};
+
 const showingMobile = ref(false);
 const page = usePage();
 
-const nav = [
-    { label: 'Tableau de bord', route: 'dashboard', match: 'dashboard' },
-    { label: 'Caisse', route: 'pos.index', match: 'pos.index|pos.store|pos.search' },
-    { label: 'Sessions', route: 'pos.sessions.index', match: 'pos.sessions.*' },
-    { label: 'Ventes', route: 'sales.index', match: 'sales.*' },
-    { label: 'Catalogue', route: 'catalog.products.index', match: 'catalog.*' },
-    { label: 'Stock', route: 'stock.batches.index', match: 'stock.batches.*' },
-    { label: 'Mouvements', route: 'stock.movements.index', match: 'stock.movements.*' },
-    { label: 'Achats', route: 'purchasing.orders.index', match: 'purchasing.*' },
-    { label: 'Inventaires', route: 'inventory.counts.index', match: 'inventory.*' },
-    { label: 'Finance', route: 'finance.index', match: 'finance.*' },
-    { label: 'Documents', route: 'documents.index', match: 'documents.*' },
-    { label: 'Audit', route: 'audit.index', match: 'audit.*' },
-    { label: 'Alertes', route: 'alerts.index', match: 'alerts.*' },
-    { label: 'Sites', route: 'settings.sites.index', match: 'settings.sites.*' },
+const auth = computed(() => page.props.auth as {
+    user?: { name?: string; tenant?: { name?: string } };
+    permissions?: string[];
+    roles?: string[];
+});
+
+const permissions = computed(() => auth.value.permissions ?? []);
+const roles = computed(() => auth.value.roles ?? []);
+
+const canAny = (required?: string[]) => {
+    if (!required || required.length === 0) {
+        return true;
+    }
+    if (roles.value.includes('owner') || roles.value.includes('super_admin')) {
+        return true;
+    }
+    return required.some((p) => permissions.value.includes(p));
+};
+
+const navAll: NavItem[] = [
+    { label: 'Tableau de bord', route: 'dashboard', match: 'dashboard', permissions: ['dashboard.view'] },
+    { label: 'Caisse', route: 'pos.index', match: 'pos.index|pos.store|pos.search', permissions: ['sales.pos'] },
+    { label: 'Sessions', route: 'pos.sessions.index', match: 'pos.sessions.*', permissions: ['sales.pos', 'sales.view'] },
+    { label: 'Ventes', route: 'sales.index', match: 'sales.*', permissions: ['sales.view'] },
+    { label: 'Catalogue', route: 'catalog.products.index', match: 'catalog.*', permissions: ['products.view'] },
+    { label: 'Stock', route: 'stock.batches.index', match: 'stock.batches.*', permissions: ['batches.view'] },
+    { label: 'Mouvements', route: 'stock.movements.index', match: 'stock.movements.*', permissions: ['batches.view'] },
+    { label: 'Achats', route: 'purchasing.orders.index', match: 'purchasing.*', permissions: ['purchase_orders.view', 'suppliers.view'] },
+    { label: 'Inventaires', route: 'inventory.counts.index', match: 'inventory.*', permissions: ['stock_counts.view'] },
+    { label: 'Finance', route: 'finance.index', match: 'finance.*', permissions: ['finance.reports.view', 'expenses.view'] },
+    { label: 'Documents', route: 'documents.index', match: 'documents.*', permissions: ['documents.view'] },
+    { label: 'Audit', route: 'audit.index', match: 'audit.*', permissions: ['audit.view'] },
+    { label: 'Alertes', route: 'alerts.index', match: 'alerts.*', permissions: ['alerts.view'] },
+    { label: 'Sites', route: 'settings.sites.index', match: 'settings.sites.*', permissions: ['sites.manage'] },
     { label: 'Compte', route: 'profile.edit', match: 'profile.*' },
 ];
 
-const userName = computed(() => (page.props.auth as { user?: { name?: string } })?.user?.name ?? '');
-const pharmacy = computed(
-    () => (page.props.auth as { user?: { tenant?: { name?: string } } })?.user?.tenant?.name ?? 'Manolya Pharma',
-);
+const nav = computed(() => navAll.filter((item) => canAny(item.permissions)));
+const canOpenPos = computed(() => canAny(['sales.pos']));
+
+const userName = computed(() => auth.value.user?.name ?? '');
+const pharmacy = computed(() => auth.value.user?.tenant?.name ?? 'Manolya Pharma');
 const flashSuccess = computed(() => (page.props as { flash?: { success?: string } }).flash?.success);
 const flashError = computed(() => (page.props as { flash?: { error?: string } }).flash?.error);
 
@@ -41,7 +69,6 @@ const isActive = (pattern: string) => {
 
 <template>
     <div class="min-h-screen">
-        <!-- Nav fixe, indépendante du scroll contenu -->
         <aside
             class="fixed inset-y-0 left-0 z-40 hidden h-dvh w-[15.5rem] flex-col print:hidden lg:flex"
             style="background: var(--mp-sidebar)"
@@ -82,7 +109,6 @@ const isActive = (pattern: string) => {
             </div>
         </aside>
 
-        <!-- Contenu décalé + scroll isolé -->
         <div class="flex min-h-dvh min-w-0 flex-col lg:pl-[15.5rem] print:pl-0">
             <header
                 class="sticky top-0 z-30 flex items-center justify-between border-b px-4 py-3 print:hidden lg:px-10"
@@ -100,7 +126,13 @@ const isActive = (pattern: string) => {
                         Franc (Fc)
                     </div>
                 </div>
-                <Link :href="route('pos.index')" class="mp-btn mp-btn-primary">Ouvrir la caisse</Link>
+                <Link
+                    v-if="canOpenPos"
+                    :href="route('pos.index')"
+                    class="mp-btn mp-btn-primary"
+                >
+                    Ouvrir la caisse
+                </Link>
             </header>
 
             <div
