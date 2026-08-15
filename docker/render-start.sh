@@ -67,11 +67,21 @@ fi
 export DB_CONNECTION="${DB_CONNECTION:-pgsql}"
 export DB_SSLMODE="${DB_SSLMODE:-require}"
 
+mkdir -p \
+  storage/framework/cache/data \
+  storage/framework/sessions \
+  storage/framework/views \
+  storage/logs \
+  storage/app/public \
+  storage/app/temp \
+  bootstrap/cache
+
 php artisan migrate --force
 php artisan storage:link || true
 php artisan config:cache
 php artisan route:cache
-php artisan view:cache
+# Non bloquant : Inertia sert surtout du JS ; les Blade PDF restent compilables à la volée
+php artisan view:cache || true
 
 (
   while true; do

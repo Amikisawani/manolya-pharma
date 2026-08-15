@@ -30,7 +30,14 @@ COPY --from=vendor /app/vendor ./vendor
 COPY . .
 COPY --from=frontend /app/public/build ./public/build
 
-RUN mkdir -p storage/framework/{cache,sessions,views} storage/logs storage/app/public storage/app/temp bootstrap/cache \
+RUN mkdir -p \
+      storage/framework/cache/data \
+      storage/framework/sessions \
+      storage/framework/views \
+      storage/logs \
+      storage/app/public \
+      storage/app/temp \
+      bootstrap/cache \
     && chmod -R ug+rwx storage bootstrap/cache \
     && php artisan package:discover --ansi || true
 
