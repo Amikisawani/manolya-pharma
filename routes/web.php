@@ -45,12 +45,11 @@ Route::middleware('guest')->group(function () {
 
 // Espace super admin (hors app pharmacie) — style HamilTech /admin/login
 Route::prefix('admin')->name('admin.')->group(function () {
-    Route::middleware('guest')->group(function () {
-        Route::get('login', [AdminAuthController::class, 'create'])->name('login');
-        Route::post('login', [AdminAuthController::class, 'store'])
-            ->middleware('throttle:10,1')
-            ->name('login.store');
-    });
+    // Login admin toujours accessible, même si session pharmacie / admin déjà ouverte
+    Route::get('login', [AdminAuthController::class, 'create'])->name('login');
+    Route::post('login', [AdminAuthController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('login.store');
 
     Route::middleware(['auth', 'super_admin'])->group(function () {
         Route::post('logout', [AdminAuthController::class, 'destroy'])->name('logout');

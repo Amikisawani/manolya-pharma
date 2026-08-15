@@ -29,6 +29,11 @@ class AuthenticatedSessionController extends Controller
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
+            'activeSession' => Auth::check() ? [
+                'name' => Auth::user()?->name,
+                'email' => Auth::user()?->email,
+                'context' => Auth::user()?->isSuperAdmin() ? 'admin' : 'pharmacie',
+            ] : null,
         ]);
     }
 
@@ -37,6 +42,11 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request): RedirectResponse
     {
+        // Remplacer la session en cours (admin ou autre) avant login pharmacie
+        if (Auth::check()) {
+            Auth::logout();
+        }
+
         $email = $request->string('email')->toString();
 
         /** @var User|null $candidate */

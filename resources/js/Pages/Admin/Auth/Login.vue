@@ -2,6 +2,10 @@
 import InputError from '@/Components/InputError.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 
+defineProps<{
+    activeSession?: { name?: string; email?: string; context?: string } | null;
+}>();
+
 const form = useForm({
     email: '',
     password: '',
@@ -27,6 +31,14 @@ const submit = () => {
             <p class="mt-4 text-sm" style="color: #9aaba2">
                 Espace plateforme — hors application pharmacie.
             </p>
+            <div
+                v-if="activeSession"
+                class="mt-4 border px-3 py-2 text-sm"
+                style="border-color: #3a463f; color: #9aaba2"
+            >
+                Session ouverte : {{ activeSession.name }} ({{ activeSession.context }}).
+                Se connecter ici remplacera cette session.
+            </div>
 
             <form class="mt-8 space-y-4" @submit.prevent="submit">
                 <div>

@@ -14,18 +14,15 @@ use Inertia\Response;
 
 class AuthController extends Controller
 {
-    public function create(): Response|RedirectResponse
+    public function create(): Response
     {
-        if (Auth::check()) {
-            if (Auth::user()?->isSuperAdmin()) {
-                return redirect()->route('admin.dashboard');
-            }
-
-            // User pharmacie déjà connecté : ne pas afficher le login admin
-            return redirect()->route('dashboard');
-        }
-
-        return Inertia::render('Admin/Auth/Login');
+        return Inertia::render('Admin/Auth/Login', [
+            'activeSession' => Auth::check() ? [
+                'name' => Auth::user()?->name,
+                'email' => Auth::user()?->email,
+                'context' => Auth::user()?->isSuperAdmin() ? 'admin' : 'pharmacie',
+            ] : null,
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -41,6 +38,11 @@ class AuthController extends Controller
             throw ValidationException::withMessages([
                 'email' => 'Trop de tentatives. Réessayez plus tard.',
             ]);
+        }
+
+        // Remplacer la session en cours sans casser le CSRF de cette requête
+        if (Auth::check()) {
+            Auth::logout();
         }
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {

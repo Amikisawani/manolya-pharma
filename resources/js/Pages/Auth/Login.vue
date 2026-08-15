@@ -9,6 +9,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 defineProps<{
     canResetPassword?: boolean;
     status?: string;
+    activeSession?: { name?: string; email?: string; context?: string } | null;
 }>();
 
 const form = useForm({
@@ -30,6 +31,15 @@ const submit = () => {
 
         <h1 class="mp-display text-3xl">Connexion</h1>
         <p class="mt-2 text-sm text-[color:var(--mp-muted)]">Accédez à votre pharmacie</p>
+
+        <div
+            v-if="activeSession"
+            class="mt-4 border px-3 py-2 text-sm text-[color:var(--mp-muted)]"
+            style="border-color: var(--mp-line)"
+        >
+            Session ouverte : {{ activeSession.name }} ({{ activeSession.context }}).
+            Se connecter ici remplacera cette session.
+        </div>
 
         <div v-if="status" class="mt-4 text-sm" style="color: var(--mp-success)">{{ status }}</div>
 
