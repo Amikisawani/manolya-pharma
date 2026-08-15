@@ -16,8 +16,13 @@ class AuthController extends Controller
 {
     public function create(): Response|RedirectResponse
     {
-        if (Auth::check() && Auth::user()?->isSuperAdmin()) {
-            return redirect()->route('admin.dashboard');
+        if (Auth::check()) {
+            if (Auth::user()?->isSuperAdmin()) {
+                return redirect()->route('admin.dashboard');
+            }
+
+            // User pharmacie déjà connecté : ne pas afficher le login admin
+            return redirect()->route('dashboard');
         }
 
         return Inertia::render('Admin/Auth/Login');
@@ -62,8 +67,9 @@ class AuthController extends Controller
 
         RateLimiter::clear($key);
         $request->session()->regenerate();
+        $request->session()->forget('url.intended');
 
-        return redirect()->intended(route('admin.dashboard'));
+        return redirect()->route('admin.dashboard');
     }
 
     public function destroy(Request $request): RedirectResponse

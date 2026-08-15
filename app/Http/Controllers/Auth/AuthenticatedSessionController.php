@@ -99,13 +99,15 @@ class AuthenticatedSessionController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($user->isSuperAdmin()) {
+        if ($user->isSuperAdmin() || ! filled($user->tenant_id)) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
             throw ValidationException::withMessages([
-                'email' => 'Compte plateforme : utilisez /admin/login.',
+                'email' => $user->isSuperAdmin()
+                    ? 'Compte plateforme : utilisez /admin/login.'
+                    : 'Compte pharmacie invalide. Demandez à l’admin de recréer l’accès.',
             ]);
         }
 
@@ -133,8 +135,10 @@ class AuthenticatedSessionController extends Controller
         }
 
         $request->session()->regenerate();
+        // Ne jamais suivre une URL /admin mémorisée (intended) après login pharmacie
+        $request->session()->forget('url.intended');
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->route('dashboard');
     }
 
     /**

@@ -20,7 +20,8 @@ class EnsureSuperAdmin
         }
 
         if (! $user->isSuperAdmin()) {
-            abort(403, 'Espace réservé au super administrateur.');
+            // Caissier / owner qui a suivi un lien /admin → retour app pharmacie
+            return redirect()->route('dashboard');
         }
 
         if (! $user->is_active) {

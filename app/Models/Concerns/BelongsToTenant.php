@@ -16,6 +16,11 @@ trait BelongsToTenant
             $tenantId = static::resolveCurrentTenantId();
 
             if ($tenantId === null) {
+                // Évite qu’un user sans tenant voie toutes les données (scope désactivé)
+                if (auth()->check() && auth()->user()?->tenant_id === null && ! auth()->user()->isSuperAdmin()) {
+                    $builder->whereRaw('0 = 1');
+                }
+
                 return;
             }
 

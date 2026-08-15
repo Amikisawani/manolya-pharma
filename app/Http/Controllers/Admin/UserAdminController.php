@@ -54,6 +54,8 @@ class UserAdminController extends Controller
         $tenant = $bootstrap->ensureVirginPharmacyStructure();
         $site = Site::query()->where('tenant_id', $tenant->id)->orderByDesc('is_main')->first();
 
+        abort_unless($site, 422, 'Aucun site pharmacie : impossible de créer un compte.');
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
@@ -64,7 +66,7 @@ class UserAdminController extends Controller
 
         $user = User::query()->create([
             'tenant_id' => $tenant->id,
-            'site_id' => $site?->id,
+            'site_id' => $site->id,
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
@@ -73,7 +75,9 @@ class UserAdminController extends Controller
             'email_verified_at' => now(),
         ]);
 
-        $user->assignRole($data['role']);
+        $user->syncRoles([$data['role']]);
+        abort_if($user->fresh()->tenant_id === null, 500, 'Échec attribution tenant.');
+
         $audit->log('admin.user.created', $user, null, ['email' => $user->email, 'role' => $data['role']]);
 
         return back()->with('success', 'Compte pharmacie créé : '.$user->email);
