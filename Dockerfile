@@ -31,4 +31,9 @@ RUN mkdir -p storage/framework/{cache,sessions,views} storage/logs storage/app/p
 
 EXPOSE 80
 
-CMD ["sh", "-c", "php artisan migrate --force && php artisan storage:link || true && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan serve --host=0.0.0.0 --port=80"]
+COPY docker/render-start.sh /usr/local/bin/render-start.sh
+RUN chmod +x /usr/local/bin/render-start.sh
+
+# Render injecte $PORT ; Coolify/Docker local → 80 par défaut
+# Le script lance aussi un mini worker queue (mails PDF clôture)
+CMD ["/usr/local/bin/render-start.sh"]

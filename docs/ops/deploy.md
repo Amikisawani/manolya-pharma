@@ -3,7 +3,11 @@
 **Dépôt GitHub :** [https://github.com/Amikisawani/manolya-pharma](https://github.com/Amikisawani/manolya-pharma)  
 **Branche déployable :** `main` (également disponible : `release/p1`)
 
-Guide opérationnel pour un pilote (Coolify, Forge, ou VPS Docker).
+Guide opérationnel pour un pilote (**Render gratuit**, Coolify, Forge, ou VPS Docker).
+
+- Gratuit proche Vercel : [`docs/ops/render.md`](./render.md) (Render + Neon)
+- Messagerie PDF : [`docs/ops/messagerie-pdf.md`](./messagerie-pdf.md)
+- Notice utilisateur : [`docs/NOTICE-UTILISATION.md`](../NOTICE-UTILISATION.md)
 
 ## Prérequis
 
@@ -118,6 +122,8 @@ Prod : pas de bind-mount du code, monter `storage` + backups, `APP_DEBUG=false`.
 - [ ] E-mails sortants testés (Brevo)
 
 ## E-mail (Brevo) — moins de spam
+
+Checklist détaillée fournisseur + appli : [`docs/ops/messagerie-pdf.md`](./messagerie-pdf.md).
 
 1. Expéditeur vérifié dans Brevo (= `MAIL_FROM_ADDRESS`).
 2. Idéal : domaine propre + **SPF + DKIM** (Brevo → Domaines) plutôt qu’un `@icloud.com` / `@gmail.com` long terme.
