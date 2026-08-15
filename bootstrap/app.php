@@ -14,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Render / Cloudflare terminent le TLS : sans ça Laravel génère des URLs http://
+        // (assets Vite / Ziggy) → contenu mixte bloqué par le navigateur.
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'tenant' => EnsureTenant::class,
         ]);
