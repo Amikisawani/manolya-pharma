@@ -7,6 +7,7 @@ RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoload
 FROM node:22-bookworm AS frontend
 WORKDIR /app
 COPY package.json package-lock.json vite.config.js tsconfig.json ./
+COPY postcss.config.js tailwind.config.js ./
 COPY resources ./resources
 COPY public ./public
 # Ziggy est requis par vue-tsc / app.ts (import vendor/tightenco/ziggy)
