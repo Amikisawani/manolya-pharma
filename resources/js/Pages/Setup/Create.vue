@@ -32,9 +32,9 @@ const submit = () => form.post(route('setup.store'));
     <GuestLayout>
         <Head title="Installation" />
 
-        <h1 class="mp-display text-3xl">Installation</h1>
+        <h1 class="mp-display text-3xl">Installation plateforme</h1>
         <p class="mt-2 text-sm text-[color:var(--mp-muted)]">
-            Première configuration — créez le compte propriétaire d’une officine vierge.
+            Crée le super administrateur (espace /admin) et une officine vierge.
         </p>
 
         <form class="mt-8 space-y-4" @submit.prevent="submit">
@@ -80,7 +80,7 @@ const submit = () => form.post(route('setup.store'));
                     required
                 />
             </div>
-            <button class="mp-btn mp-btn-primary w-full" :disabled="form.processing">Lancer Manolya</button>
+            <button class="mp-btn mp-btn-primary w-full" :disabled="form.processing">Créer le super admin</button>
         </form>
     </GuestLayout>
 </template>

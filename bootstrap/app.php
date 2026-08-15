@@ -20,6 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'tenant' => EnsureTenant::class,
+            'super_admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
+            'deny_super_admin' => \App\Http\Middleware\DenySuperAdminFromPharmacy::class,
         ]);
 
         $middleware->web(append: [

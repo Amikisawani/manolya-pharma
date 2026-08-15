@@ -98,6 +98,17 @@ class AuthenticatedSessionController extends Controller
 
         /** @var User $user */
         $user = $request->user();
+
+        if ($user->isSuperAdmin()) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            throw ValidationException::withMessages([
+                'email' => 'Compte plateforme : utilisez /admin/login.',
+            ]);
+        }
+
         $user->forceFill([
             'failed_login_attempts' => 0,
             'locked_until' => null,

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputError from '@/Components/InputError.vue';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 const props = defineProps<{
+    tenant: { id: string; name: string };
     users: Array<{
         id: string;
         name: string;
@@ -59,7 +60,7 @@ const submitEdit = () => {
 };
 
 const deactivate = (id: string) => {
-    if (!confirm('Désactiver ce compte ?')) return;
+    if (!confirm('Désactiver ce compte pharmacie ?')) return;
     router.delete(route('admin.users.destroy', id));
 };
 
@@ -77,86 +78,81 @@ const roleLabel = (role: string | null) => {
 </script>
 
 <template>
-    <Head title="Administration" />
-    <AuthenticatedLayout>
-        <template #header>
-            <div>
-                <p class="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-[color:var(--mp-faint)]">Admin</p>
-                <h1 class="mp-display mt-1 text-4xl">Comptes utilisateurs</h1>
-                <p class="mt-2 text-sm text-[color:var(--mp-muted)]">
-                    Créez les accès de votre équipe. L’appli peut rester vierge : pas de données démo obligatoires.
-                </p>
-            </div>
-        </template>
+    <Head title="Admin — Comptes" />
+    <AdminLayout>
+        <p class="text-[0.68rem] font-semibold uppercase tracking-[0.2em]" style="color: #7a857e">Comptes</p>
+        <h1 class="mp-display mt-1 text-4xl">Utilisateurs pharmacie</h1>
+        <p class="mt-2 text-sm" style="color: #9aaba2">
+            Officine : {{ tenant.name }}. Ces comptes se connectent sur /login (pas ici).
+        </p>
 
-        <div class="grid gap-10 xl:grid-cols-2">
+        <div class="mt-10 grid gap-10 xl:grid-cols-2">
             <div>
-                <div v-for="user in users" :key="user.id" class="mp-row items-center">
-                    <div class="min-w-0 flex-1">
+                <div
+                    v-for="user in users"
+                    :key="user.id"
+                    class="flex items-center justify-between gap-3 border-b py-4"
+                    style="border-color: #24302a"
+                >
+                    <div class="min-w-0">
                         <div class="font-medium">{{ user.name }}</div>
-                        <div class="text-xs text-[color:var(--mp-muted)]">{{ user.email }}</div>
-                        <div class="mt-1 flex flex-wrap gap-2 text-xs">
-                            <span class="mp-badge">{{ roleLabel(user.role) }}</span>
-                            <span :class="user.is_active ? 'mp-badge mp-badge-ok' : 'mp-badge mp-badge-danger'">
-                                {{ user.is_active ? 'Actif' : 'Inactif' }}
-                            </span>
+                        <div class="text-xs" style="color: #9aaba2">{{ user.email }}</div>
+                        <div class="mt-1 text-xs" style="color: #7a857e">
+                            {{ roleLabel(user.role) }} · {{ user.is_active ? 'Actif' : 'Inactif' }}
                         </div>
                     </div>
                     <div class="flex shrink-0 gap-2">
-                        <button type="button" class="mp-btn mp-btn-ghost" @click="startEdit(user)">Modifier</button>
-                        <button type="button" class="mp-btn mp-btn-ghost" @click="deactivate(user.id)">Désactiver</button>
+                        <button type="button" class="border px-3 py-1.5 text-xs" style="border-color: #3a463f" @click="startEdit(user)">
+                            Modifier
+                        </button>
+                        <button type="button" class="border px-3 py-1.5 text-xs" style="border-color: #b42318; color: #f0c4c0" @click="deactivate(user.id)">
+                            Désactiver
+                        </button>
                     </div>
                 </div>
+                <p v-if="users.length === 0" class="py-6 text-sm" style="color: #7a857e">Aucun compte pharmacie — créez un propriétaire.</p>
 
                 <form
                     v-if="editingId"
                     class="mt-6 space-y-3 border p-5"
-                    style="border-color: var(--mp-line)"
+                    style="border-color: #24302a"
                     @submit.prevent="submitEdit"
                 >
-                    <h2 class="mp-section-title">Modifier le compte</h2>
-                    <input v-model="editForm.name" class="mp-input" placeholder="Nom" required />
-                    <input v-model="editForm.email" class="mp-input" type="email" placeholder="Email" required />
-                    <input v-model="editForm.phone" class="mp-input" placeholder="Téléphone" />
-                    <select v-model="editForm.role" class="mp-input">
+                    <h2 class="text-lg font-semibold">Modifier</h2>
+                    <input v-model="editForm.name" class="w-full border px-3 py-2 text-sm" style="border-color: #3a463f; background: #0e1311" required />
+                    <input v-model="editForm.email" type="email" class="w-full border px-3 py-2 text-sm" style="border-color: #3a463f; background: #0e1311" required />
+                    <input v-model="editForm.phone" class="w-full border px-3 py-2 text-sm" style="border-color: #3a463f; background: #0e1311" placeholder="Téléphone" />
+                    <select v-model="editForm.role" class="w-full border px-3 py-2 text-sm" style="border-color: #3a463f; background: #0e1311">
                         <option v-for="role in roles" :key="role" :value="role">{{ roleLabel(role) }}</option>
                     </select>
                     <label class="flex items-center gap-2 text-sm">
                         <input v-model="editForm.is_active" type="checkbox" />
-                        Compte actif
+                        Actif
                     </label>
-                    <input
-                        v-model="editForm.password"
-                        class="mp-input"
-                        type="password"
-                        placeholder="Nouveau mot de passe (optionnel)"
-                    />
+                    <input v-model="editForm.password" type="password" class="w-full border px-3 py-2 text-sm" style="border-color: #3a463f; background: #0e1311" placeholder="Nouveau mot de passe (optionnel)" />
                     <InputError :message="editForm.errors.email || editForm.errors.password" />
                     <div class="flex gap-2">
-                        <button class="mp-btn mp-btn-primary" :disabled="editForm.processing">Enregistrer</button>
-                        <button type="button" class="mp-btn mp-btn-ghost" @click="editingId = null">Annuler</button>
+                        <button class="px-4 py-2 text-sm font-semibold" style="background: #1f6b4a" :disabled="editForm.processing">Enregistrer</button>
+                        <button type="button" class="border px-4 py-2 text-sm" style="border-color: #3a463f" @click="editingId = null">Annuler</button>
                     </div>
                 </form>
             </div>
 
-            <form class="space-y-3 border p-5" style="border-color: var(--mp-line)" @submit.prevent="submitCreate">
-                <h2 class="mp-section-title">Nouveau compte</h2>
-                <input v-model="createForm.name" class="mp-input" placeholder="Nom" required />
-                <InputError :message="createForm.errors.name" />
-                <input v-model="createForm.email" class="mp-input" type="email" placeholder="Email" required />
+            <form class="space-y-3 border p-5" style="border-color: #24302a" @submit.prevent="submitCreate">
+                <h2 class="text-lg font-semibold">Nouveau compte</h2>
+                <input v-model="createForm.name" class="w-full border px-3 py-2 text-sm" style="border-color: #3a463f; background: #0e1311" placeholder="Nom" required />
+                <input v-model="createForm.email" type="email" class="w-full border px-3 py-2 text-sm" style="border-color: #3a463f; background: #0e1311" placeholder="Email" required />
                 <InputError :message="createForm.errors.email" />
-                <input v-model="createForm.password" class="mp-input" type="password" placeholder="Mot de passe" required />
+                <input v-model="createForm.password" type="password" class="w-full border px-3 py-2 text-sm" style="border-color: #3a463f; background: #0e1311" placeholder="Mot de passe" required />
                 <InputError :message="createForm.errors.password" />
-                <input v-model="createForm.phone" class="mp-input" placeholder="Téléphone" />
-                <select v-model="createForm.role" class="mp-input">
+                <input v-model="createForm.phone" class="w-full border px-3 py-2 text-sm" style="border-color: #3a463f; background: #0e1311" placeholder="Téléphone" />
+                <select v-model="createForm.role" class="w-full border px-3 py-2 text-sm" style="border-color: #3a463f; background: #0e1311">
                     <option v-for="role in roles" :key="role" :value="role">{{ roleLabel(role) }}</option>
                 </select>
-                <button class="mp-btn mp-btn-primary" :disabled="createForm.processing">Créer le compte</button>
+                <button class="w-full px-4 py-2.5 text-sm font-semibold" style="background: #1f6b4a; color: #f7f4ef" :disabled="createForm.processing">
+                    Créer
+                </button>
             </form>
         </div>
-
-        <div class="mt-12 border-t pt-8" style="border-color: var(--mp-line)">
-            <Link :href="route('admin.reset.edit')" class="mp-btn mp-btn-ghost">Réinitialiser l’application →</Link>
-        </div>
-    </AuthenticatedLayout>
+    </AdminLayout>
 </template>

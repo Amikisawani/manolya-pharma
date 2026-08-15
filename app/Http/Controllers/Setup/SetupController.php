@@ -16,7 +16,7 @@ class SetupController extends Controller
     public function create(ManolyaBootstrap $bootstrap): Response|RedirectResponse
     {
         if (! $bootstrap->needsSetup()) {
-            return redirect()->route('login');
+            return redirect()->route('admin.login');
         }
 
         return Inertia::render('Setup/Create', [
@@ -43,11 +43,11 @@ class SetupController extends Controller
             'site_code' => ['required', 'string', 'max:50'],
         ]);
 
-        $user = $bootstrap->createVirginPharmacy($data);
+        $admin = $bootstrap->bootstrapPlatform($data);
 
-        Auth::login($user);
+        Auth::login($admin);
         $request->session()->regenerate();
 
-        return redirect()->route('dashboard')->with('success', 'Pharmacie initialisée. Bienvenue !');
+        return redirect()->route('admin.dashboard')->with('success', 'Plateforme initialisée. Espace super admin prêt.');
     }
 }

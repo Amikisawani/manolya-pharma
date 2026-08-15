@@ -16,21 +16,17 @@ class AppResetController extends Controller
 {
     public function edit(Request $request): Response
     {
-        $this->authorizeOwner($request);
-
         return Inertia::render('Admin/Reset', [
-            'owner' => [
+            'admin' => [
                 'name' => $request->user()->name,
                 'email' => $request->user()->email,
             ],
-            'pharmacy_name' => $request->user()->tenant?->name ?? config('manolya.bootstrap.pharmacy_name'),
+            'pharmacy_name' => config('manolya.bootstrap.pharmacy_name'),
         ]);
     }
 
     public function destroy(Request $request, ManolyaBootstrap $bootstrap, AuditLogger $audit): RedirectResponse
     {
-        $this->authorizeOwner($request);
-
         $data = $request->validate([
             'confirmation' => ['required', 'in:REINITIALISER'],
             'password' => ['required', 'current_password'],
@@ -40,7 +36,7 @@ class AppResetController extends Controller
             'pharmacy_name' => ['required', 'string', 'max:255'],
         ]);
 
-        $audit->log('app.factory_reset', $request->user(), null, [
+        $audit->log('admin.app.factory_reset', $request->user(), null, [
             'email' => $data['email'],
         ]);
 
@@ -48,21 +44,16 @@ class AppResetController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        $user = $bootstrap->factoryReset([
+        $admin = $bootstrap->factoryReset([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['new_password'],
             'pharmacy_name' => $data['pharmacy_name'],
         ]);
 
-        Auth::login($user);
+        Auth::login($admin);
         $request->session()->regenerate();
 
-        return redirect()->route('dashboard')->with('success', 'Application réinitialisée (vierge).');
-    }
-
-    private function authorizeOwner(Request $request): void
-    {
-        abort_unless($request->user()?->hasAnyRole(['owner', 'super_admin']), 403);
+        return redirect()->route('admin.dashboard')->with('success', 'Application remise à zéro (données test effacées).');
     }
 }

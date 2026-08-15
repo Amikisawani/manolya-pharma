@@ -20,17 +20,10 @@ const nav = [
     { label: 'Audit', route: 'audit.index', match: 'audit.*' },
     { label: 'Alertes', route: 'alerts.index', match: 'alerts.*' },
     { label: 'Sites', route: 'settings.sites.index', match: 'settings.sites.*' },
-    { label: 'Admin', route: 'admin.users.index', match: 'admin.*', ownerOnly: true },
     { label: 'Compte', route: 'profile.edit', match: 'profile.*' },
 ];
 
 const userName = computed(() => (page.props.auth as { user?: { name?: string } })?.user?.name ?? '');
-const isOwner = computed(
-    () => Boolean((page.props.auth as { canAdmin?: boolean })?.canAdmin),
-);
-const visibleNav = computed(() =>
-    nav.filter((item) => !('ownerOnly' in item && item.ownerOnly) || isOwner.value),
-);
 const pharmacy = computed(
     () => (page.props.auth as { user?: { tenant?: { name?: string } } })?.user?.tenant?.name ?? 'Manolya Pharma',
 );
@@ -65,7 +58,7 @@ const isActive = (pattern: string) => {
 
             <nav class="mp-scroll-sidebar min-h-0 flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden px-2 py-1">
                 <Link
-                    v-for="item in visibleNav"
+                    v-for="item in nav"
                     :key="item.route"
                     :href="route(item.route)"
                     class="flex items-center px-3 py-2 text-[0.8125rem] transition"
@@ -116,7 +109,7 @@ const isActive = (pattern: string) => {
                 style="border-color: var(--mp-line); background: #fffcf7"
             >
                 <Link
-                    v-for="item in visibleNav"
+                    v-for="item in nav"
                     :key="item.route"
                     :href="route(item.route)"
                     class="block px-3 py-2 text-sm"

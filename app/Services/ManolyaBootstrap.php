@@ -14,9 +14,6 @@ use Illuminate\Support\Facades\Schema;
 
 class ManolyaBootstrap
 {
-    /**
-     * @param  array{name: string, email: string, password: string, pharmacy_name?: string, site_name?: string, site_code?: string}  $owner
-     */
     public function ensureRoles(): void
     {
         (new RolesAndPermissionsSeeder)->run();
@@ -28,105 +25,147 @@ class ManolyaBootstrap
             return true;
         }
 
-        return User::withTrashed()->count() === 0;
+        return ! User::query()
+            ->whereNull('tenant_id')
+            ->whereHas('roles', fn ($q) => $q->where('name', 'super_admin'))
+            ->exists();
     }
 
     /**
-     * Crée une officine vierge + le premier propriétaire (owner).
-     *
-     * @param  array{name: string, email: string, password: string, pharmacy_name?: string, site_name?: string, site_code?: string}  $owner
+     * @param  array{name: string, email: string, password: string, pharmacy_name?: string, site_name?: string, site_code?: string}  $admin
      */
-    public function createVirginPharmacy(array $owner): User
+    public function bootstrapPlatform(array $admin): User
     {
         $this->ensureRoles();
 
-        return DB::transaction(function () use ($owner) {
-            $tenant = Tenant::query()->create([
-                'name' => $owner['pharmacy_name'] ?? config('manolya.bootstrap.pharmacy_name'),
-                'slug' => 'pharmacie-'.strtolower(str()->random(6)),
-                'default_currency' => config('currency.default', 'CDF'),
-                'timezone' => 'Africa/Kinshasa',
-                'locale' => 'fr',
-                'status' => 'active',
-            ]);
-
-            app()->instance('current_tenant_id', (string) $tenant->id);
-
-            $site = Site::query()->create([
-                'tenant_id' => $tenant->id,
-                'name' => $owner['site_name'] ?? config('manolya.bootstrap.site_name'),
-                'code' => $owner['site_code'] ?? config('manolya.bootstrap.site_code'),
-                'address' => null,
-                'is_main' => true,
-            ]);
-
-            Warehouse::query()->create([
-                'tenant_id' => $tenant->id,
-                'site_id' => $site->id,
-                'name' => 'Réserve principale',
-                'code' => 'WH-MAIN',
-                'is_default' => true,
-            ]);
-
-            $user = User::query()->create([
-                'tenant_id' => $tenant->id,
-                'site_id' => $site->id,
-                'name' => $owner['name'],
-                'email' => strtolower($owner['email']),
-                'password' => $owner['password'],
+        return DB::transaction(function () use ($admin) {
+            $superAdmin = User::query()->create([
+                'tenant_id' => null,
+                'site_id' => null,
+                'name' => $admin['name'],
+                'email' => strtolower($admin['email']),
+                'password' => $admin['password'],
                 'is_active' => true,
                 'email_verified_at' => now(),
             ]);
+            $superAdmin->assignRole('super_admin');
 
-            $user->assignRole('owner');
+            $this->ensureVirginPharmacyStructure([
+                'pharmacy_name' => $admin['pharmacy_name'] ?? config('manolya.bootstrap.pharmacy_name'),
+                'site_name' => $admin['site_name'] ?? config('manolya.bootstrap.site_name'),
+                'site_code' => $admin['site_code'] ?? config('manolya.bootstrap.site_code'),
+            ]);
 
-            (new PharmacyCategorySeeder)->run();
-
-            return $user->fresh(['roles', 'tenant', 'site']);
+            return $superAdmin->fresh(['roles']);
         });
     }
 
     /**
-     * Bootstrap depuis la config / env si la base est vide.
+     * @param  array{pharmacy_name?: string, site_name?: string, site_code?: string}  $meta
      */
+    public function ensureVirginPharmacyStructure(array $meta = []): Tenant
+    {
+        $tenant = Tenant::query()->first();
+
+        if ($tenant) {
+            app()->instance('current_tenant_id', (string) $tenant->id);
+
+            return $tenant;
+        }
+
+        $tenant = Tenant::query()->create([
+            'name' => $meta['pharmacy_name'] ?? config('manolya.bootstrap.pharmacy_name'),
+            'slug' => 'pharmacie-'.strtolower(str()->random(6)),
+            'default_currency' => config('currency.default', 'CDF'),
+            'timezone' => 'Africa/Kinshasa',
+            'locale' => 'fr',
+            'status' => 'active',
+        ]);
+
+        app()->instance('current_tenant_id', (string) $tenant->id);
+
+        $site = Site::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => $meta['site_name'] ?? config('manolya.bootstrap.site_name'),
+            'code' => $meta['site_code'] ?? config('manolya.bootstrap.site_code'),
+            'address' => null,
+            'is_main' => true,
+        ]);
+
+        Warehouse::query()->create([
+            'tenant_id' => $tenant->id,
+            'site_id' => $site->id,
+            'name' => 'Réserve principale',
+            'code' => 'WH-MAIN',
+            'is_default' => true,
+        ]);
+
+        (new PharmacyCategorySeeder)->run();
+
+        return $tenant;
+    }
+
     public function bootstrapFromConfigIfEmpty(): ?User
     {
-        if (! $this->needsSetup()) {
-            $this->ensureRoles();
+        $this->ensureRoles();
 
+        if (! $this->needsSetup()) {
             return null;
         }
 
         $password = (string) config('manolya.bootstrap.owner_password');
-        $email = (string) config('manolya.bootstrap.owner_email');
+        $email = strtolower((string) config('manolya.bootstrap.owner_email'));
         $name = (string) config('manolya.bootstrap.owner_name');
 
         if ($password === '' || $email === '' || $name === '') {
-            $this->ensureRoles();
-
             return null;
         }
 
-        return $this->createVirginPharmacy([
-            'name' => $name,
-            'email' => $email,
-            'password' => $password,
+        $meta = [
             'pharmacy_name' => (string) config('manolya.bootstrap.pharmacy_name'),
             'site_name' => (string) config('manolya.bootstrap.site_name'),
             'site_code' => (string) config('manolya.bootstrap.site_code'),
+        ];
+
+        // Promo d’un ancien compte owner vers super_admin (migration après 1er bootstrap)
+        $existing = User::withTrashed()->where('email', $email)->first();
+        if ($existing) {
+            if ($existing->trashed()) {
+                $existing->restore();
+            }
+
+            $existing->forceFill([
+                'tenant_id' => null,
+                'site_id' => null,
+                'name' => $name,
+                'password' => $password,
+                'is_active' => true,
+                'email_verified_at' => $existing->email_verified_at ?? now(),
+            ])->save();
+            $existing->syncRoles(['super_admin']);
+            $this->ensureVirginPharmacyStructure($meta);
+
+            return $existing->fresh(['roles']);
+        }
+
+        return $this->bootstrapPlatform([
+            'name' => $name,
+            'email' => $email,
+            'password' => $password,
+            ...$meta,
         ]);
     }
 
     /**
-     * Remet l'appli à zéro (données métier + utilisateurs), puis recrée le propriétaire.
+     * Reset données métier + comptes pharmacie, conserve / recrée le super_admin.
      *
-     * @param  array{name: string, email: string, password: string, pharmacy_name?: string, site_name?: string, site_code?: string}  $owner
+     * @param  array{name: string, email: string, password: string, pharmacy_name?: string}  $admin
      */
-    public function factoryReset(array $owner): User
+    public function factoryReset(array $admin): User
     {
         $this->wipeApplicationData();
 
-        return $this->createVirginPharmacy($owner);
+        return $this->bootstrapPlatform($admin);
     }
 
     public function wipeApplicationData(): void
@@ -187,5 +226,11 @@ class ManolyaBootstrap
         DB::statement('TRUNCATE TABLE '.$joined.' RESTART IDENTITY CASCADE');
 
         Artisan::call('permission:cache-reset');
+    }
+
+    /** @deprecated Use bootstrapPlatform */
+    public function createVirginPharmacy(array $owner): User
+    {
+        return $this->bootstrapPlatform($owner);
     }
 }

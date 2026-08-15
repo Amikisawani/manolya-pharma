@@ -28,7 +28,8 @@ class ManolyaBootstrapCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->info('Owner créé : '.$user->email);
+        $this->info('Super admin créé : '.$user->email.' → /admin/login');
+
 
         return self::SUCCESS;
     }

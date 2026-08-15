@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Infrastructure\Audit\AuditLogger;
+use App\Models\Site;
+use App\Models\Tenant;
 use App\Models\User;
+use App\Services\ManolyaBootstrap;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,15 +18,18 @@ use Spatie\Permission\Models\Role;
 
 class UserAdminController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, ManolyaBootstrap $bootstrap): Response
     {
-        $this->authorizeOwner($request);
-
-        $tenantId = $request->user()->tenant_id;
+        $tenant = $bootstrap->ensureVirginPharmacyStructure();
+        $site = Site::query()->where('tenant_id', $tenant->id)->orderByDesc('is_main')->first();
 
         return Inertia::render('Admin/Users/Index', [
+            'tenant' => [
+                'id' => $tenant->id,
+                'name' => $tenant->name,
+            ],
             'users' => User::query()
-                ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId))
+                ->where('tenant_id', $tenant->id)
                 ->with('roles:id,name')
                 ->orderBy('name')
                 ->get()
@@ -39,12 +45,14 @@ class UserAdminController extends Controller
                 ->whereIn('name', ['owner', 'pharmacist', 'stock_manager', 'cashier', 'accountant', 'auditor'])
                 ->orderBy('name')
                 ->pluck('name'),
+            'default_site_id' => $site?->id,
         ]);
     }
 
-    public function store(Request $request, AuditLogger $audit): RedirectResponse
+    public function store(Request $request, AuditLogger $audit, ManolyaBootstrap $bootstrap): RedirectResponse
     {
-        $this->authorizeOwner($request);
+        $tenant = $bootstrap->ensureVirginPharmacyStructure();
+        $site = Site::query()->where('tenant_id', $tenant->id)->orderByDesc('is_main')->first();
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -55,8 +63,8 @@ class UserAdminController extends Controller
         ]);
 
         $user = User::query()->create([
-            'tenant_id' => $request->user()->tenant_id,
-            'site_id' => $request->user()->site_id,
+            'tenant_id' => $tenant->id,
+            'site_id' => $site?->id,
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
@@ -66,15 +74,15 @@ class UserAdminController extends Controller
         ]);
 
         $user->assignRole($data['role']);
-        $audit->log('user.created', $user, null, ['email' => $user->email, 'role' => $data['role']]);
+        $audit->log('admin.user.created', $user, null, ['email' => $user->email, 'role' => $data['role']]);
 
-        return back()->with('success', 'Compte créé : '.$user->email);
+        return back()->with('success', 'Compte pharmacie créé : '.$user->email);
     }
 
     public function update(Request $request, User $user, AuditLogger $audit): RedirectResponse
     {
-        $this->authorizeOwner($request);
-        $this->assertSameTenant($request, $user);
+        abort_if($user->isSuperAdmin(), 403);
+        abort_unless($user->tenant_id, 404);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -101,35 +109,20 @@ class UserAdminController extends Controller
         $user->save();
         $user->syncRoles([$data['role']]);
 
-        $audit->log('user.updated', $user, $before, $user->only(['name', 'email', 'phone', 'is_active']));
+        $audit->log('admin.user.updated', $user, $before, $user->only(['name', 'email', 'phone', 'is_active']));
 
         return back()->with('success', 'Compte mis à jour.');
     }
 
     public function destroy(Request $request, User $user, AuditLogger $audit): RedirectResponse
     {
-        $this->authorizeOwner($request);
-        $this->assertSameTenant($request, $user);
+        abort_if($user->isSuperAdmin(), 403);
+        abort_unless($user->tenant_id, 404);
 
-        abort_if($user->id === $request->user()->id, 422, 'Vous ne pouvez pas supprimer votre propre compte.');
-
-        $audit->log('user.deactivated', $user, $user->toArray(), null);
+        $audit->log('admin.user.deactivated', $user, $user->toArray(), null);
         $user->update(['is_active' => false]);
         $user->delete();
 
         return back()->with('success', 'Compte désactivé.');
-    }
-
-    private function authorizeOwner(Request $request): void
-    {
-        abort_unless($request->user()?->hasAnyRole(['owner', 'super_admin']), 403);
-    }
-
-    private function assertSameTenant(Request $request, User $user): void
-    {
-        abort_unless(
-            $request->user()?->tenant_id && $user->tenant_id === $request->user()->tenant_id,
-            403
-        );
     }
 }

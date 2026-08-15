@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\AppResetController;
+use App\Http\Controllers\Admin\AuthController as AdminAuthController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\UserAdminController;
 use App\Http\Controllers\Alert\AlertController;
 use App\Http\Controllers\Audit\AuditController;
@@ -41,6 +43,27 @@ Route::middleware('guest')->group(function () {
     Route::post('/setup', [SetupController::class, 'store'])->name('setup.store');
 });
 
+// Espace super admin (hors app pharmacie) — style HamilTech /admin/login
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::middleware('guest')->group(function () {
+        Route::get('login', [AdminAuthController::class, 'create'])->name('login');
+        Route::post('login', [AdminAuthController::class, 'store'])
+            ->middleware('throttle:10,1')
+            ->name('login.store');
+    });
+
+    Route::middleware(['auth', 'super_admin'])->group(function () {
+        Route::post('logout', [AdminAuthController::class, 'destroy'])->name('logout');
+        Route::get('/', AdminDashboardController::class)->name('dashboard');
+        Route::get('users', [UserAdminController::class, 'index'])->name('users.index');
+        Route::post('users', [UserAdminController::class, 'store'])->name('users.store');
+        Route::put('users/{user}', [UserAdminController::class, 'update'])->name('users.update');
+        Route::delete('users/{user}', [UserAdminController::class, 'destroy'])->name('users.destroy');
+        Route::get('reset', [AppResetController::class, 'edit'])->name('reset.edit');
+        Route::delete('reset', [AppResetController::class, 'destroy'])->name('reset.destroy');
+    });
+});
+
 Route::get('/two-factor/challenge', [TwoFactorController::class, 'challenge'])->name('two-factor.challenge');
 Route::post('/two-factor/challenge', [TwoFactorController::class, 'verify'])->name('two-factor.verify');
 
@@ -49,20 +72,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/two-factor/enable', [TwoFactorController::class, 'enable'])->name('two-factor.enable');
 });
 
-Route::middleware(['auth', 'tenant'])->group(function () {
+Route::middleware(['auth', 'tenant', 'deny_super_admin'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
-    // Admin (owner) — comptes + reset appli vierge
-    Route::get('/admin/users', [UserAdminController::class, 'index'])->name('admin.users.index');
-    Route::post('/admin/users', [UserAdminController::class, 'store'])->name('admin.users.store');
-    Route::put('/admin/users/{user}', [UserAdminController::class, 'update'])->name('admin.users.update');
-    Route::delete('/admin/users/{user}', [UserAdminController::class, 'destroy'])->name('admin.users.destroy');
-    Route::get('/admin/reset', [AppResetController::class, 'edit'])->name('admin.reset.edit');
-    Route::delete('/admin/reset', [AppResetController::class, 'destroy'])->name('admin.reset.destroy');
 
     // POS & ventes
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
