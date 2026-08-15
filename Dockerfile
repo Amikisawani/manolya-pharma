@@ -1,9 +1,16 @@
-# Manolya Pharma — production image (Coolify / Docker)
+# Manolya Pharma — production image (Render / Coolify / Docker)
+FROM composer:2 AS vendor
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts --ignore-platform-reqs
+
 FROM node:22-bookworm AS frontend
 WORKDIR /app
 COPY package.json package-lock.json vite.config.js tsconfig.json ./
 COPY resources ./resources
 COPY public ./public
+# Ziggy est requis par vue-tsc / app.ts (import vendor/tightenco/ziggy)
+COPY --from=vendor /app/vendor/tightenco/ziggy ./vendor/tightenco/ziggy
 RUN npm ci && npm run build
 
 FROM php:8.4-cli-bookworm
@@ -19,9 +26,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts
-
+COPY --from=vendor /app/vendor ./vendor
 COPY . .
 COPY --from=frontend /app/public/build ./public/build
 
