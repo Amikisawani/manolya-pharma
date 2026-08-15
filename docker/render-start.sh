@@ -77,6 +77,8 @@ mkdir -p \
   bootstrap/cache
 
 php artisan migrate --force
+# Appli vierge : rôles + premier owner (SETUP_OWNER_* / config manolya) si base vide
+php artisan manolya:bootstrap || true
 php artisan storage:link || true
 php artisan config:cache
 php artisan route:cache

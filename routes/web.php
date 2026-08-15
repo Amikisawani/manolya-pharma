@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\AppResetController;
+use App\Http\Controllers\Admin\UserAdminController;
 use App\Http\Controllers\Alert\AlertController;
 use App\Http\Controllers\Audit\AuditController;
 use App\Http\Controllers\Auth\TwoFactorController;
@@ -17,15 +19,26 @@ use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\SupplierController;
 use App\Http\Controllers\Sales\SaleController;
 use App\Http\Controllers\Sales\SaleReturnController;
+use App\Http\Controllers\Setup\SetupController;
 use App\Http\Controllers\Stock\BatchController;
 use App\Http\Controllers\Stock\StockAdjustmentController;
 use App\Http\Controllers\Stock\StockMovementController;
+use App\Services\ManolyaBootstrap;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
+Route::get('/', function (ManolyaBootstrap $bootstrap) {
+    if ($bootstrap->needsSetup()) {
+        return redirect()->route('setup.create');
+    }
+
     return auth()->check()
         ? redirect()->route('dashboard')
         : redirect()->route('login');
+});
+
+Route::middleware('guest')->group(function () {
+    Route::get('/setup', [SetupController::class, 'create'])->name('setup.create');
+    Route::post('/setup', [SetupController::class, 'store'])->name('setup.store');
 });
 
 Route::get('/two-factor/challenge', [TwoFactorController::class, 'challenge'])->name('two-factor.challenge');
@@ -42,6 +55,14 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Admin (owner) — comptes + reset appli vierge
+    Route::get('/admin/users', [UserAdminController::class, 'index'])->name('admin.users.index');
+    Route::post('/admin/users', [UserAdminController::class, 'store'])->name('admin.users.store');
+    Route::put('/admin/users/{user}', [UserAdminController::class, 'update'])->name('admin.users.update');
+    Route::delete('/admin/users/{user}', [UserAdminController::class, 'destroy'])->name('admin.users.destroy');
+    Route::get('/admin/reset', [AppResetController::class, 'edit'])->name('admin.reset.edit');
+    Route::delete('/admin/reset', [AppResetController::class, 'destroy'])->name('admin.reset.destroy');
 
     // POS & ventes
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');

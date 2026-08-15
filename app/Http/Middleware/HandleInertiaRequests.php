@@ -36,6 +36,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $user,
+                'canAdmin' => $user?->hasAnyRole(['owner', 'super_admin']) ?? false,
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
@@ -45,10 +46,6 @@ class HandleInertiaRequests extends Middleware
                 'code' => $user?->tenant?->default_currency ?? config('currency.default', 'CDF'),
                 'symbol' => config('currency.symbol', 'Fc'),
                 'rates' => config('currency.rates', ['USD' => 2350, 'EUR' => 2702.5]),
-            ],
-            'sentry' => [
-                'environment' => config('sentry.environment') ?: config('app.env'),
-                'release' => config('sentry.release'),
             ],
             'sentry' => [
                 'environment' => config('sentry.environment') ?: config('app.env'),

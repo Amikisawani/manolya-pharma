@@ -25,6 +25,14 @@ services:
         sync: false
       - key: SESSION_SECURE_COOKIE
         value: "true"
+      - key: SETUP_OWNER_NAME
+        value: Ami Kisawani
+      - key: SETUP_OWNER_EMAIL
+        value: amikisawani71@gmail.com
+      - key: SETUP_OWNER_PASSWORD
+        sync: false
+      - key: SETUP_PHARMACY_NAME
+        value: Pharmacie Manolya
       - key: LOG_CHANNEL
         value: stderr
       - key: DB_CONNECTION
