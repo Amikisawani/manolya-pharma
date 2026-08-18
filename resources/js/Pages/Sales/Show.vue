@@ -1,19 +1,25 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MoneyAmount from '@/Components/MoneyAmount.vue';
+import Receipt80mm from '@/Components/Receipt80mm.vue';
+import { useThermalPrint } from '@/Composables/useThermalPrint';
+import type { ThermalReceiptPayload } from '@/types/receipt';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, reactive } from 'vue';
 
 const props = defineProps<{
     sale: Record<string, any>;
+    receipt: ThermalReceiptPayload;
+    printOnLoad?: boolean;
+    isReprint?: boolean;
     canRefund?: boolean;
     hasOpenSession?: boolean;
 }>();
 
+const { printReceipt } = useThermalPrint(Boolean(props.printOnLoad));
+
 const methodLabel = (method: string) =>
     ({ cash: 'Espèces', card: 'Carte', mobile_money: 'Mobile Money' }[method] ?? method);
-
-const printTicket = () => window.print();
 
 const qtyByLine = reactive<Record<string, number>>(
     Object.fromEntries(
@@ -54,7 +60,7 @@ const submitReturn = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex flex-wrap items-end justify-between gap-3 print:hidden">
+            <div class="flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <Link :href="route('sales.index')" class="text-xs text-[color:var(--mp-accent)]">← Ventes</Link>
                     <h1 class="mp-display mt-2 text-4xl">{{ sale.number }}</h1>
@@ -65,68 +71,31 @@ const submitReturn = () => {
                         </span>
                     </p>
                 </div>
-                <div class="flex gap-2">
-                    <button class="mp-btn mp-btn-ghost" type="button" @click="printTicket">Imprimer</button>
-                    <Link :href="route('pos.index')" class="mp-btn mp-btn-primary">Retour caisse</Link>
+                <div class="flex flex-wrap gap-2">
+                    <button class="mp-btn mp-btn-primary" type="button" @click="printReceipt">
+                        🖨 Imprimer le ticket
+                    </button>
+                    <Link :href="route('pos.index')" class="mp-btn mp-btn-ghost">Retour caisse</Link>
                 </div>
             </div>
         </template>
 
-        <article class="mx-auto max-w-xl border p-6" style="border-color: var(--mp-line); background: #fffcf7">
-            <div class="text-center">
-                <div class="mp-display text-3xl">Manolya Pharma</div>
-                <div class="mt-1 text-xs uppercase tracking-[0.2em] text-[color:var(--mp-faint)]">Ticket de caisse</div>
-                <div class="mt-4 font-mono text-sm">{{ sale.number }}</div>
-                <div class="text-xs text-[color:var(--mp-muted)]">{{ sale.completed_at }}</div>
-            </div>
-
-            <div class="mt-6 border-t pt-4" style="border-color: var(--mp-line)">
-                <div v-for="line in sale.lines" :key="line.id" class="mp-row text-sm">
-                    <div>
-                        <div class="font-medium">{{ line.product?.commercial_name }}</div>
-                        <div class="text-xs text-[color:var(--mp-faint)]">
-                            {{ line.quantity }} × {{ Number(line.unit_price).toLocaleString('fr-FR') }} Fc
-                            <span v-if="line.batch?.lot_number"> · Lot {{ line.batch.lot_number }}</span>
-                            <span v-if="Number(line.quantity_returned) > 0">
-                                · Retourné {{ line.quantity_returned }}
-                            </span>
-                        </div>
-                    </div>
-                    <MoneyAmount :amount="line.line_total" size="sm" align="right" :show-fx="false" />
-                </div>
-            </div>
-
-            <div class="mt-4 space-y-2 border-t pt-4" style="border-color: var(--mp-line)">
-                <div class="flex justify-between text-sm">
-                    <span class="text-[color:var(--mp-muted)]">Sous-total</span>
-                    <MoneyAmount :amount="sale.subtotal" size="sm" align="right" :show-fx="false" />
-                </div>
-                <div v-if="Number(sale.discount_total) > 0" class="flex justify-between text-sm">
-                    <span class="text-[color:var(--mp-muted)]">Remise</span>
-                    <MoneyAmount :amount="sale.discount_total" size="sm" align="right" :show-fx="false" />
-                </div>
-                <div class="flex items-start justify-between pt-2">
-                    <span class="font-semibold">Total</span>
-                    <MoneyAmount :amount="sale.grand_total" size="lg" align="right" />
-                </div>
-            </div>
-
-            <div class="mt-6 border-t pt-4 text-sm" style="border-color: var(--mp-line)">
-                <div class="mp-metric-label">Paiements</div>
-                <div v-for="p in sale.payments" :key="p.id" class="mt-2 flex justify-between">
-                    <span>{{ methodLabel(p.method) }}</span>
-                    <MoneyAmount :amount="p.amount" size="sm" align="right" :show-fx="false" />
-                </div>
-            </div>
-
-            <p class="mt-8 text-center text-xs text-[color:var(--mp-faint)]">
-                Merci de votre confiance · {{ sale.site?.name ?? 'Manolya Pharma' }}
+        <div class="mp-ticket-stage">
+            <p class="mp-no-print mb-3 text-center text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[color:var(--mp-faint)]">
+                Aperçu du ticket 80 mm
             </p>
-        </article>
+            <div class="mp-ticket-paper">
+                <Receipt80mm :receipt="receipt" />
+            </div>
+            <p class="mp-no-print mt-3 max-w-[80mm] text-center text-xs text-[color:var(--mp-muted)]">
+                Choisissez l’imprimante thermique 80 mm dans la boîte de dialogue, sans ajuster à la page.
+            </p>
+        </div>
 
         <section
             v-if="sale.returns?.length"
-            class="mx-auto mt-10 max-w-xl print:hidden"
+            id="details"
+            class="mp-no-print mx-auto mt-10 max-w-xl"
         >
             <h2 class="mp-section-title">Retours déjà effectués</h2>
             <div v-for="ret in sale.returns" :key="ret.id" class="mp-row">
@@ -142,7 +111,7 @@ const submitReturn = () => {
 
         <section
             v-if="canRefund && returnableLines.length"
-            class="mx-auto mt-10 max-w-xl space-y-4 border p-5 print:hidden"
+            class="mp-no-print mx-auto mt-10 max-w-xl space-y-4 border p-5"
             style="border-color: var(--mp-line)"
         >
             <h2 class="mp-section-title">Retour / remboursement</h2>

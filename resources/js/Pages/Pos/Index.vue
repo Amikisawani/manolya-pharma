@@ -9,6 +9,7 @@ const props = defineProps<{
     currency: string;
     openSession: Record<string, any> | null;
     warehouses: Array<{ id: string; name: string; site_id: string }>;
+    receiptAutoPrint?: boolean;
 }>();
 
 type ProductHit = {
@@ -26,6 +27,9 @@ const cart = ref<CartLine[]>([]);
 const paymentMethod = ref<'cash' | 'card' | 'mobile_money'>('cash');
 const momoProvider = ref<'orange' | 'airtel' | 'mtn'>('orange');
 const searching = ref(false);
+const customerName = ref('');
+const note = ref('');
+const tenderedAmount = ref<number | null>(null);
 const page = usePage();
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 let searchSeq = 0;
@@ -39,6 +43,9 @@ const subtotal = computed(() =>
 const form = useForm({
     warehouse_id: props.warehouse?.id ?? '',
     discount_total: 0,
+    customer_name: '',
+    note: '',
+    amount_tendered: 0 as number | null,
     lines: [] as Array<Record<string, string | number>>,
     payments: [] as Array<Record<string, string | number>>,
 });
@@ -114,16 +121,29 @@ const removeLine = (id: string) => {
 
 const checkout = () => {
     if (!sessionOpen.value) return;
+    const dueNow = due.value;
+    const cashTendered =
+        paymentMethod.value === 'cash'
+            ? Number(tenderedAmount.value ?? dueNow)
+            : dueNow;
+
+    if (paymentMethod.value === 'cash' && cashTendered < dueNow) {
+        return;
+    }
+
     form.lines = cart.value.map((l) => ({
         product_id: l.id,
         quantity: l.quantity,
         unit_price: Number(l.sale_price),
         discount_amount: l.discount_amount,
     }));
+    form.customer_name = customerName.value.trim();
+    form.note = note.value.trim();
+    form.amount_tendered = cashTendered;
     form.payments = [
         {
             method: paymentMethod.value,
-            amount: Math.max(subtotal.value - Number(form.discount_total), 0),
+            amount: dueNow,
             ...(paymentMethod.value === 'mobile_money' ? { provider: momoProvider.value } : {}),
         },
     ];
@@ -132,6 +152,9 @@ const checkout = () => {
             cart.value = [];
             results.value = [];
             query.value = '';
+            customerName.value = '';
+            note.value = '';
+            tenderedAmount.value = null;
         },
     });
 };
@@ -140,6 +163,13 @@ const submitOpenSession = () => openForm.post(route('pos.sessions.store'));
 
 const flash = computed(() => (page.props as { flash?: { success?: string } }).flash?.success);
 const due = computed(() => Math.max(subtotal.value - Number(form.discount_total), 0));
+const cashReceived = computed(() =>
+    paymentMethod.value === 'cash' ? Number(tenderedAmount.value ?? due.value) : due.value,
+);
+const changeDue = computed(() => Math.max(0, cashReceived.value - due.value));
+const canCheckout = computed(
+    () => cart.value.length > 0 && !form.processing && cashReceived.value >= due.value,
+);
 </script>
 
 <template>
@@ -268,12 +298,34 @@ const due = computed(() => Math.max(subtotal.value - Number(form.discount_total)
                         <input v-model.number="form.discount_total" type="number" min="0" class="mp-input mt-1" />
                     </div>
                     <div>
+                        <label class="mp-metric-label">Client (optionnel)</label>
+                        <input
+                            v-model="customerName"
+                            type="text"
+                            class="mp-input mt-1"
+                            placeholder="Client comptoir"
+                        />
+                    </div>
+                    <div>
                         <label class="mp-metric-label">Paiement</label>
                         <select v-model="paymentMethod" class="mp-input mt-1">
                             <option value="cash">Espèces</option>
                             <option value="card">Carte</option>
                             <option value="mobile_money">Mobile Money</option>
                         </select>
+                    </div>
+                    <div v-if="paymentMethod === 'cash'">
+                        <label class="mp-metric-label">Montant reçu (Fc)</label>
+                        <input
+                            v-model.number="tenderedAmount"
+                            type="number"
+                            min="0"
+                            class="mp-input mt-1"
+                            :placeholder="String(due)"
+                        />
+                        <p v-if="changeDue > 0" class="mt-1 text-xs text-[color:var(--mp-muted)]">
+                            Monnaie à rendre : {{ new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(changeDue) }} Fc
+                        </p>
                     </div>
                     <div v-if="paymentMethod === 'mobile_money'">
                         <label class="mp-metric-label">Opérateur</label>
@@ -283,14 +335,21 @@ const due = computed(() => Math.max(subtotal.value - Number(form.discount_total)
                             <option value="mtn">MTN MoMo</option>
                         </select>
                     </div>
+                    <div>
+                        <label class="mp-metric-label">Note ticket (optionnel)</label>
+                        <input v-model="note" type="text" class="mp-input mt-1" maxlength="255" />
+                    </div>
                     <button
                         class="mp-btn mp-btn-primary w-full"
                         type="button"
-                        :disabled="!cart.length || form.processing"
+                        :disabled="!canCheckout"
                         @click="checkout"
                     >
                         Encaisser
                     </button>
+                    <p v-if="receiptAutoPrint" class="text-center text-xs text-[color:var(--mp-faint)]">
+                        Le ticket s’imprimera automatiquement après validation.
+                    </p>
                 </div>
             </section>
         </div>

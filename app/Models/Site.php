@@ -20,6 +20,16 @@ class Site extends Model
         'name',
         'code',
         'address',
+        'phone',
+        'email',
+        'legal_rccm',
+        'legal_id_nat',
+        'legal_nif',
+        'logo_path',
+        'receipt_footer',
+        'receipt_return_policy',
+        'receipt_auto_print',
+        'receipt_show_qr',
         'is_main',
         'deleted_by',
         'delete_reason',
@@ -29,6 +39,8 @@ class Site extends Model
     {
         return [
             'is_main' => 'boolean',
+            'receipt_auto_print' => 'boolean',
+            'receipt_show_qr' => 'boolean',
         ];
     }
 

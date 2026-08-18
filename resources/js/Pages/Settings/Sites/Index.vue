@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import ReceiptSettingsForm from '@/Pages/Settings/Sites/ReceiptSettingsForm.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 
 defineProps<{
@@ -8,6 +9,16 @@ defineProps<{
         name: string;
         code: string;
         address: string | null;
+        phone: string | null;
+        email: string | null;
+        legal_rccm: string | null;
+        legal_id_nat: string | null;
+        legal_nif: string | null;
+        logo_path: string | null;
+        receipt_footer: string | null;
+        receipt_return_policy: string | null;
+        receipt_auto_print: boolean;
+        receipt_show_qr: boolean;
         is_main: boolean;
         warehouses: Array<{ id: string; name: string; code: string }>;
     }>;
@@ -36,17 +47,16 @@ const submit = () => form.post(route('settings.sites.store'), { onSuccess: () =>
 
         <div class="grid gap-10 xl:grid-cols-2">
             <div>
-                <div v-for="site in sites" :key="site.id" class="mp-row">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <div class="font-medium">{{ site.name }}</div>
-                            <span v-if="site.is_main" class="mp-badge mp-badge-ok">Principal</span>
-                        </div>
-                        <div class="text-xs text-[color:var(--mp-muted)]">{{ site.code }} · {{ site.address }}</div>
-                        <div class="mt-2 text-sm text-[color:var(--mp-faint)]">
-                            <span v-for="wh in site.warehouses" :key="wh.id" class="mr-3">{{ wh.name }} ({{ wh.code }})</span>
-                        </div>
+                <div v-for="site in sites" :key="site.id" class="mb-8 border-b pb-6" style="border-color: var(--mp-line)">
+                    <div class="flex items-center gap-2">
+                        <div class="font-medium">{{ site.name }}</div>
+                        <span v-if="site.is_main" class="mp-badge mp-badge-ok">Principal</span>
                     </div>
+                    <div class="text-xs text-[color:var(--mp-muted)]">{{ site.code }} · {{ site.address }}</div>
+                    <div class="mt-2 text-sm text-[color:var(--mp-faint)]">
+                        <span v-for="wh in site.warehouses" :key="wh.id" class="mr-3">{{ wh.name }} ({{ wh.code }})</span>
+                    </div>
+                    <ReceiptSettingsForm :site="site" />
                 </div>
             </div>
 

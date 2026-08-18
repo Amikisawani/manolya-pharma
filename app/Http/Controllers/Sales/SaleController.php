@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Sales;
 
 use App\Domain\Reporting\Services\OperationalSpreadsheetExport;
+use App\Domain\Sales\Receipts\ThermalReceiptBuilder;
 use App\Http\Controllers\Controller;
+use App\Models\CashRegisterSession;
 use App\Models\Sale;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -60,7 +62,7 @@ class SaleController extends Controller
         ])->deleteFileAfterSend(true);
     }
 
-    public function show(Request $request, Sale $sale): Response
+    public function show(Request $request, Sale $sale, ThermalReceiptBuilder $receipts): Response
     {
         $this->authorize('view', $sale);
 
@@ -69,20 +71,30 @@ class SaleController extends Controller
             'lines.batch:id,lot_number,expires_at',
             'payments',
             'cashier:id,name',
-            'site:id,name',
+            'site',
+            'tenant:id,name,timezone',
             'warehouse:id,name',
             'returns.lines',
             'cashRegisterSession:id,number,status',
         ]);
 
+        $sale->makeHidden(['cost_total', 'profit_total']);
+
         $canRefund = $request->user()?->can('refund', $sale) ?? false;
+        $isReprint = $request->routeIs('sales.reprint') || $request->boolean('reprint');
+        $printOnLoad = $isReprint
+            || $request->boolean('print')
+            || (bool) $request->session()->pull('print_receipt');
 
         return Inertia::render('Sales/Show', [
             'sale' => $sale,
+            'receipt' => $receipts->fromSale($sale, $isReprint)->toArray(),
+            'printOnLoad' => $printOnLoad,
+            'isReprint' => $isReprint,
             'canRefund' => $canRefund,
-            'hasOpenSession' => \App\Models\CashRegisterSession::query()
+            'hasOpenSession' => CashRegisterSession::query()
                 ->where('opened_by', $request->user()?->id)
-                ->where('status', \App\Models\CashRegisterSession::STATUS_OPEN)
+                ->where('status', CashRegisterSession::STATUS_OPEN)
                 ->exists(),
         ]);
     }

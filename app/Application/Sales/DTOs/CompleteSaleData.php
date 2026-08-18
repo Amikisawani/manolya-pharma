@@ -29,5 +29,8 @@ final readonly class CompleteSaleData
         public string $discountTotal = '0.00',
         public ?string $number = null,
         public ?string $cashRegisterSessionId = null,
+        public ?string $customerName = null,
+        public ?string $amountTendered = null,
+        public ?string $note = null,
     ) {}
 }
