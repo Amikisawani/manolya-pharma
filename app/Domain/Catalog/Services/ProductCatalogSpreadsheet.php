@@ -220,12 +220,11 @@ final class ProductCatalogSpreadsheet
     private function makeWriter(string $format): WriterInterface
     {
         if (strtolower($format) === 'csv') {
-            $options = new CsvWriterOptions;
-            $options->FIELD_DELIMITER = ';';
-            $options->FIELD_ENCLOSURE = '"';
-            $options->SHOULD_ADD_BOM = true;
-
-            return new CsvWriter($options);
+            return new CsvWriter(new CsvWriterOptions(
+                FIELD_DELIMITER: ';',
+                FIELD_ENCLOSURE: '"',
+                SHOULD_ADD_BOM: true,
+            ));
         }
 
         return new XlsxWriter;
@@ -235,11 +234,10 @@ final class ProductCatalogSpreadsheet
     {
         $format = strtolower($format);
         if (in_array($format, ['csv', 'txt'], true)) {
-            $options = new CsvReaderOptions;
-            $options->FIELD_DELIMITER = ';';
-            $options->FIELD_ENCLOSURE = '"';
-
-            return new CsvReader($options);
+            return new CsvReader(new CsvReaderOptions(
+                FIELD_DELIMITER: ';',
+                FIELD_ENCLOSURE: '"',
+            ));
         }
 
         return new XlsxReader;
