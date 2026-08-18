@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CashRegisterSession;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Models\Site;
 use App\Models\Warehouse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,11 +35,16 @@ class PosController extends Controller
             ->where('status', CashRegisterSession::STATUS_OPEN)
             ->first();
 
+        $site = $user?->site
+            ?? Site::query()->where('is_main', true)->first()
+            ?? Site::query()->first();
+
         return Inertia::render('Pos/Index', [
             'warehouse' => $warehouse,
             'currency' => $user?->tenant?->default_currency ?? 'CDF',
             'openSession' => $openSession,
             'warehouses' => Warehouse::query()->orderBy('name')->get(['id', 'name', 'site_id']),
+            'receiptAutoPrint' => (bool) ($site?->receipt_auto_print ?? false),
         ]);
     }
 
@@ -69,6 +75,9 @@ class PosController extends Controller
             'payments.*.provider' => ['nullable', 'string', 'in:orange,airtel,mtn,orange_money,airtel_money,mtn_momo,stub'],
             'payments.*.provider_ref' => ['nullable', 'string'],
             'payments.*.msisdn' => ['nullable', 'string', 'max:32'],
+            'customer_name' => ['nullable', 'string', 'max:120'],
+            'note' => ['nullable', 'string', 'max:255'],
+            'amount_tendered' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $warehouse = Warehouse::query()->findOrFail($data['warehouse_id']);
@@ -94,11 +103,21 @@ class PosController extends Controller
             ], $data['payments']),
             discountTotal: (string) ($data['discount_total'] ?? '0'),
             cashRegisterSessionId: (string) $openSession->id,
+            customerName: isset($data['customer_name']) ? (string) $data['customer_name'] : null,
+            amountTendered: isset($data['amount_tendered']) ? (string) $data['amount_tendered'] : null,
+            note: isset($data['note']) ? (string) $data['note'] : null,
         ));
 
-        return redirect()
+        $site = Site::query()->find($sale->site_id);
+        $redirect = redirect()
             ->route('sales.show', $sale)
             ->with('success', "Vente {$sale->number} enregistrée.");
+
+        if ($site?->receipt_auto_print) {
+            $redirect->with('print_receipt', true);
+        }
+
+        return $redirect;
     }
 
     public function search(Request $request)

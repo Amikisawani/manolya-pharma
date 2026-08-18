@@ -113,7 +113,8 @@ const close = () => form.post(route('pos.sessions.close', props.session.id));
                 </div>
                 <div class="text-right">
                     <MoneyAmount :amount="sale.grand_total" size="sm" align="right" />
-                    <Link :href="route('sales.show', sale.id)" class="text-xs text-[color:var(--mp-accent)]">Ticket</Link>
+                    <Link :href="route('sales.show', sale.id)" class="text-xs text-[color:var(--mp-accent)]">Voir</Link>
+                    <Link :href="route('sales.reprint', sale.id)" class="ml-2 text-xs text-[color:var(--mp-accent)]">Réimprimer</Link>
                 </div>
             </div>
             <p v-if="!sales.length" class="py-6 text-sm text-[color:var(--mp-muted)]">Aucune vente</p>

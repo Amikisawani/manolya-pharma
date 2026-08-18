@@ -25,6 +25,8 @@
 /storage/backups
 /storage/app/temp
 /vendor
+/database/*.sqlite
+/database/*.sqlite-journal
 _ide_helper.php
 Homestead.json
 Homestead.yaml

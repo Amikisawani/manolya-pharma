@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Alert;
 use App\Models\Batch;
 use App\Models\Category;
 use App\Models\Product;
@@ -33,6 +34,15 @@ class DemoTenantSeeder extends Seeder
             'name' => 'Site Bandal',
             'code' => 'KIN-01',
             'address' => 'Bandalungwa, Kinshasa, RDC',
+            'phone' => '+243 81 000 0000',
+            'email' => 'contact@manolya.test',
+            'legal_rccm' => 'CD/KNG/RCCM/24-B-01234',
+            'legal_id_nat' => '01-1234-N56789',
+            'legal_nif' => 'A1234567C',
+            'receipt_footer' => 'Votre santé, notre priorité.',
+            'receipt_return_policy' => 'Les médicaments ne sont ni repris ni échangés, sauf erreur de délivrance constatée au comptoir.',
+            'receipt_auto_print' => false,
+            'receipt_show_qr' => true,
             'is_main' => true,
         ]);
 
@@ -159,7 +169,7 @@ class DemoTenantSeeder extends Seeder
             ]);
         }
 
-        \App\Models\Alert::query()->create([
+        Alert::query()->create([
             'tenant_id' => $tenant->id,
             'type' => 'stock_critical',
             'severity' => 'critical',
@@ -169,7 +179,7 @@ class DemoTenantSeeder extends Seeder
             'raised_at' => now(),
         ]);
 
-        \App\Models\Alert::query()->create([
+        Alert::query()->create([
             'tenant_id' => $tenant->id,
             'type' => 'expiry_soon',
             'severity' => 'warning',

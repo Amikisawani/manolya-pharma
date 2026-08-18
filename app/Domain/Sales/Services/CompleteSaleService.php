@@ -7,8 +7,8 @@ use App\Domain\Inventory\Services\BatchAllocator;
 use App\Domain\Inventory\Services\StockMutator;
 use App\Domain\Shared\ValueObjects\Money;
 use App\Infrastructure\Audit\AuditLogger;
-use App\Infrastructure\Payments\CashGateway;
 use App\Infrastructure\Payments\CardManualGateway;
+use App\Infrastructure\Payments\CashGateway;
 use App\Infrastructure\Payments\MobileMoneyGatewayResolver;
 use App\Infrastructure\Payments\PaymentGateway;
 use App\Infrastructure\Payments\PaymentIntent;
@@ -51,6 +51,8 @@ final class CompleteSaleService
                 'cash_register_session_id' => $data->cashRegisterSessionId,
                 'number' => $data->number ?? $this->generateSaleNumber(),
                 'cashier_id' => $data->cashierId,
+                'customer_name' => $this->nullableString($data->customerName),
+                'note' => $this->nullableString($data->note),
                 'status' => Sale::STATUS_DRAFT,
                 'subtotal' => '0.00',
                 'discount_total' => (string) $data->discountTotal,
@@ -120,6 +122,14 @@ final class CompleteSaleService
             $grandTotal = bcsub($subtotal, $discountTotal, 2);
             $profitTotal = bcsub($grandTotal, $costTotal, 2);
 
+            $tendered = $this->nullableString($data->amountTendered) ?? $grandTotal;
+            if (bccomp($tendered, $grandTotal, 2) < 0) {
+                throw new RuntimeException(
+                    "Le montant reçu [{$tendered}] est inférieur au total à payer [{$grandTotal}]."
+                );
+            }
+            $changeGiven = bcsub($tendered, $grandTotal, 2);
+
             $paymentSum = '0.00';
             foreach ($data->payments as $payment) {
                 $paymentSum = bcadd($paymentSum, (string) $payment['amount'], 2);
@@ -169,6 +179,8 @@ final class CompleteSaleService
                 'subtotal' => $subtotal,
                 'discount_total' => $discountTotal,
                 'grand_total' => $grandTotal,
+                'amount_tendered' => $tendered,
+                'change_given' => $changeGiven,
                 'cost_total' => $costTotal,
                 'profit_total' => $profitTotal,
                 'completed_at' => now(),
@@ -204,5 +216,16 @@ final class CompleteSaleService
     private function generateSaleNumber(): string
     {
         return 'SL-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
+    }
+
+    private function nullableString(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        return $value === '' ? null : $value;
     }
 }

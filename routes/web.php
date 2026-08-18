@@ -17,6 +17,7 @@ use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\SupplierController;
 use App\Http\Controllers\Sales\SaleController;
 use App\Http\Controllers\Sales\SaleReturnController;
+use App\Http\Controllers\Settings\SiteController;
 use App\Http\Controllers\Stock\BatchController;
 use App\Http\Controllers\Stock\StockAdjustmentController;
 use App\Http\Controllers\Stock\StockMovementController;
@@ -59,6 +60,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
     Route::get('/sales/export', [SaleController::class, 'export'])->name('sales.export');
     Route::get('/sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
+    Route::get('/sales/{sale}/reprint', [SaleController::class, 'show'])->name('sales.reprint');
     Route::post('/sales/{sale}/returns', [SaleReturnController::class, 'store'])->name('sales.returns.store');
 
     // Catalogue
@@ -118,8 +120,9 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     // Audit
     Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
 
-    Route::get('/settings/sites', [\App\Http\Controllers\Settings\SiteController::class, 'index'])->name('settings.sites.index');
-    Route::post('/settings/sites', [\App\Http\Controllers\Settings\SiteController::class, 'store'])->name('settings.sites.store');
+    Route::get('/settings/sites', [SiteController::class, 'index'])->name('settings.sites.index');
+    Route::post('/settings/sites', [SiteController::class, 'store'])->name('settings.sites.store');
+    Route::post('/settings/sites/{site}', [SiteController::class, 'update'])->name('settings.sites.update');
 
     // Alertes
     Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');

@@ -57,7 +57,7 @@ const methodLabel = (method: string) =>
                     <th>Caissier</th>
                     <th>Paiement</th>
                     <th>Total</th>
-                    <th></th>
+                    <th class="text-right">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -70,7 +70,11 @@ const methodLabel = (method: string) =>
                     </td>
                     <td><MoneyAmount :amount="sale.grand_total" size="sm" /></td>
                     <td class="text-right">
-                        <Link :href="route('sales.show', sale.id)" class="text-sm text-[color:var(--mp-accent)]">Ticket</Link>
+                        <div class="flex flex-wrap justify-end gap-x-3 gap-y-1 text-sm">
+                            <Link :href="route('sales.show', sale.id)" class="text-[color:var(--mp-accent)]">Voir</Link>
+                            <Link :href="route('sales.reprint', sale.id)" class="text-[color:var(--mp-accent)]">Réimprimer</Link>
+                            <Link :href="`${route('sales.show', sale.id)}#details`" class="text-[color:var(--mp-muted)]">Détails</Link>
+                        </div>
                     </td>
                 </tr>
             </tbody>
