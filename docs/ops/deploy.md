@@ -66,25 +66,45 @@ Ne jamais committer `.env` ni les dumps de backup.
    branche `release/p1` (ou `main` après merge), build pack **Dockerfile**.
 2. Ajouter services **PostgreSQL 16** + **Redis**.
 3. Injecter les variables ci-dessus (`APP_KEY` générée, `APP_URL` = domaine Coolify).
-4. Le `Dockerfile` exécute déjà `migrate` + caches au démarrage. Il écoute `$PORT` (Render) ou 80, avec `PHP_CLI_SERVER_WORKERS` et `--no-reload` pour ne pas geler le health-check pendant un import.
-5. Health-check HTTP : `GET /up`
-6. Processus supplémentaires (recommandé) :
-   - Worker : `php artisan queue:work redis --sleep=1 --tries=3 --max-time=3600`
-   - Scheduler : `php artisan schedule:work` (ou cron `* * * * * php artisan schedule:run`)
-7. Premier login : créer un owner (ne pas laisser le mot de passe démo en prod).  
+4. Le `Dockerfile` lance nginx + PHP-FPM + le worker de file d’attente (plus `php artisan serve`). Health-check : `GET /up`.
+5. Scheduler (recommandé) : `php artisan schedule:work` (ou cron `* * * * * php artisan schedule:run`). Le worker d’import est déjà dans le conteneur.
+6. Premier login : créer un owner (ne pas laisser le mot de passe démo en prod).  
    Seed démo uniquement si environnement de test : `php artisan db:seed --force`.
 
 ## Render
 
-Le 502 « Bad Gateway » apparaît si **une seule requête PHP** (souvent l’import Excel) bloque `php artisan serve` plus longtemps que le timeout Render (~30 s) : le proxy coupe, le health-check échoue, tout le site tombe.
+Le 502 « Bad Gateway » (Request ID `…-SEA`) signifie que **rien ne répond derrière le proxy** : le process PHP est mort, bloqué, ou n’écoute pas `$PORT`.
 
-Mitigations dans ce dépôt :
+Ne pas utiliser `php artisan serve` en prod. L’image Docker lance **nginx + PHP-FPM** (plusieurs workers) et un **queue worker**. L’import Excel est un job (`imports`) : il ne bloque plus le site.
 
-- import catalogue lancé en processus séparé (`catalog:import`)
-- `PHP_CLI_SERVER_WORKERS=3` + `artisan serve --no-reload`
-- health check : `/up`
+Sur le service Render :
 
-Sur le service Render : runtime **Docker**, port **10000** ou laisser `PORT`, health check path `/up`.
+1. Runtime **Docker**, `Dockerfile` à la racine, health check **`/up`**.
+2. Laisser Render injecter `PORT` (ne pas forcer le port 80 dans le dashboard si Render envoie 10000).
+3. Variables **sans Redis** (un seul web service) :
+
+```env
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://votre-service.onrender.com
+APP_KEY=base64:...
+
+DB_CONNECTION=pgsql
+DB_HOST=...
+DB_PORT=5432
+DB_DATABASE=...
+DB_USERNAME=...
+DB_PASSWORD=...
+
+SESSION_DRIVER=database
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+SCOUT_DRIVER=collection
+```
+
+Si `SESSION_DRIVER=redis` alors que Redis n’existe pas, chaque page plante.
+
+4. Après un 502 : **Manual Deploy → Restart** une fois l’image nginx/FPM déployée, puis réessayer l’import.
 
 ## Laravel Forge
 

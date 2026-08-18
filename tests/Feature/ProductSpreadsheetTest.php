@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Catalog\Services\ProductCatalogSpreadsheet;
+use App\Jobs\ImportCatalogJob;
 use App\Models\Batch;
 use App\Models\Product;
 use App\Models\User;
@@ -149,6 +151,37 @@ class ProductSpreadsheetTest extends TestCase
         $this->assertDatabaseHas('products', [
             'sku' => 'CMD-01',
             'commercial_name' => 'Produit commande artisan',
+        ]);
+        $this->assertFileDoesNotExist($path);
+    }
+
+    public function test_import_catalog_job_imports_file(): void
+    {
+        $this->seed();
+        $owner = User::query()->where('email', 'owner@manolya.test')->firstOrFail();
+        app()->instance('current_tenant_id', (string) $owner->tenant_id);
+
+        $path = storage_path('app/temp/job-import.csv');
+        if (! is_dir(dirname($path))) {
+            mkdir(dirname($path), 0755, true);
+        }
+
+        file_put_contents($path, implode("\n", [
+            'sku;commercial_name;purchase_price;sale_price;currency_code',
+            'JOB-01;Produit job import;1000;2000;CDF',
+        ]));
+
+        (new ImportCatalogJob(
+            $path,
+            (string) $owner->tenant_id,
+            'csv',
+            (string) $owner->id,
+            true,
+        ))->handle(app(ProductCatalogSpreadsheet::class));
+
+        $this->assertDatabaseHas('products', [
+            'sku' => 'JOB-01',
+            'commercial_name' => 'Produit job import',
         ]);
         $this->assertFileDoesNotExist($path);
     }

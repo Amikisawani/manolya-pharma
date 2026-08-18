@@ -48,4 +48,4 @@ Si l’import échoue, un bandeau rouge s’affiche (plus une page d’erreur vi
 
 Une ligne invalide n’annule plus tout le fichier : les lignes correctes sont importées, les autres sont listées dans le message.
 
-En production (Render / Coolify), l’import tourne **hors requête HTTP** (`php artisan catalog:import`). Sinon le serveur PHP bloqué dépasse le timeout (~30 s) : health-check KO → **502 Bad Gateway** pour tout le site. Actualisez le catalogue quelques secondes après l’envoi du fichier.
+En production (Render / Coolify), l’import est un **job en file d’attente** (table `jobs`) : la page répond tout de suite. Actualisez le catalogue quelques secondes après l’envoi du fichier. Un import long ne doit plus provoquer de **502**.

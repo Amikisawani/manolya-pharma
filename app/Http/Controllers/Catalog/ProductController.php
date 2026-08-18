@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Catalog;
 use App\Domain\Catalog\Services\ProductCatalogSpreadsheet;
 use App\Domain\Inventory\Services\OpeningStockService;
 use App\Http\Controllers\Controller;
+use App\Jobs\ImportCatalogJob;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Supplier;
@@ -211,33 +212,21 @@ class ProductController extends Controller
         }
 
         $path = Storage::disk('local')->path($stored);
+        $tenantId = (string) $request->user()->tenant_id;
+        $userId = (string) $request->user()->id;
 
         if (app()->runningUnitTests()) {
             return $this->importSynchronously(
                 $spreadsheet,
                 $path,
                 $stored,
-                (string) $request->user()->tenant_id,
+                $tenantId,
                 $ext,
-                (string) $request->user()->id,
+                $userId,
             );
         }
 
-        if (! $this->startBackgroundImport(
-            $path,
-            (string) $request->user()->tenant_id,
-            $ext,
-            (string) $request->user()->id,
-        )) {
-            return $this->importSynchronously(
-                $spreadsheet,
-                $path,
-                $stored,
-                (string) $request->user()->tenant_id,
-                $ext,
-                (string) $request->user()->id,
-            );
-        }
+        ImportCatalogJob::dispatch($path, $tenantId, $ext, $userId);
 
         return redirect()
             ->route('catalog.products.index')
@@ -272,29 +261,6 @@ class ProductController extends Controller
         return redirect()
             ->route('catalog.products.index')
             ->with($ok ? 'success' : 'error', $message);
-    }
-
-    private function startBackgroundImport(string $path, string $tenantId, string $ext, string $userId): bool
-    {
-        $log = storage_path('logs/catalog-import.log');
-        $command = sprintf(
-            'cd %s && nohup %s %s catalog:import %s %s %s --user=%s --delete >> %s 2>&1 & echo $!',
-            escapeshellarg(base_path()),
-            escapeshellarg(PHP_BINARY),
-            escapeshellarg(base_path('artisan')),
-            escapeshellarg($path),
-            escapeshellarg($tenantId),
-            escapeshellarg($ext),
-            escapeshellarg($userId),
-            escapeshellarg($log),
-        );
-
-        $output = [];
-        $code = 0;
-        @exec($command, $output, $code);
-        $pid = (int) ($output[0] ?? 0);
-
-        return $pid > 0;
     }
 
     /**
