@@ -87,11 +87,6 @@ const submitReturn = () => {
             <div class="mp-ticket-paper">
                 <Receipt58mm :receipt="receipt" />
             </div>
-            <p class="mp-ticket-hint mp-no-print">
-                GOOJPRT PT-210 : imprimante <strong>PT-210 / POS-58</strong>, papier
-                <strong>58 mm rouleau</strong> (pas 58×40 mm), échelle <strong>100 %</strong>,
-                sans « Ajuster à la page », sans en-têtes ni pieds de page.
-            </p>
         </section>
 
         <section

@@ -164,14 +164,6 @@
     font-weight: 700;
 }
 
-.mp-ticket-hint {
-    margin: 3mm 0 0;
-    max-width: 58mm;
-    text-align: center;
-    font-size: 11px;
-    color: #6b6560;
-}
-
 /* Cmd/Ctrl+P sur la page vente : remplir le papier, ne pas laisser un timbre 58 mm sur A4. */
 @media print {
     @page {
@@ -219,9 +211,5 @@
     #receipt-58mm {
         padding: 2mm 2mm 3.5mm !important;
         font-size: 12pt !important;
-    }
-
-    .mp-ticket-hint {
-        display: none !important;
     }
 }
