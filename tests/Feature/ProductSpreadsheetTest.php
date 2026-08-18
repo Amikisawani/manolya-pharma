@@ -2,6 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Catalog\Services\ProductCatalogSpreadsheet;
+use App\Jobs\ImportCatalogJob;
+use App\Models\Batch;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -64,6 +67,123 @@ class ProductSpreadsheetTest extends TestCase
         $this->assertNotNull(Product::query()->where('sku', 'TEST-XLSX-01')->first()?->category_id);
 
         @unlink($path);
+    }
+
+    public function test_invalid_xlsx_shows_flash_error_instead_of_500(): void
+    {
+        $this->seed();
+        $owner = User::query()->where('email', 'owner@manolya.test')->firstOrFail();
+
+        $upload = UploadedFile::fake()->create(
+            'corrompu.xlsx',
+            12,
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+
+        $this->actingAs($owner)
+            ->post(route('catalog.products.import'), ['file' => $upload])
+            ->assertRedirect(route('catalog.products.index'))
+            ->assertSessionHas('error');
+    }
+
+    public function test_mixed_rows_import_valid_lines_and_skip_invalid_ones(): void
+    {
+        $this->seed();
+        $owner = User::query()->where('email', 'owner@manolya.test')->firstOrFail();
+
+        $path = storage_path('app/temp/mixed-import.csv');
+        if (! is_dir(dirname($path))) {
+            mkdir(dirname($path), 0755, true);
+        }
+
+        file_put_contents($path, implode("\n", [
+            'sku;commercial_name;purchase_price;sale_price;currency_code;initial_qty;lot_number;expires_at',
+            'GOOD-01;Produit bon;1000;2000;CDF;10;LOT-G;31/12/2027',
+            'BAD-01;Produit date texte;1000;2000;CDF;5;LOT-B;pas-une-date',
+            ';Sans SKU;1000;2000;CDF;1;LOT-X;2027-01-01',
+            'GOOD-02;Produit apres erreur;1000;2000;CDF;8;LOT-H;2028-06-01',
+        ]));
+
+        $upload = new UploadedFile($path, 'mixed.csv', 'text/csv', null, true);
+
+        $this->actingAs($owner)
+            ->post(route('catalog.products.import'), ['file' => $upload])
+            ->assertRedirect(route('catalog.products.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('products', ['sku' => 'GOOD-01']);
+        $this->assertDatabaseHas('products', ['sku' => 'BAD-01']);
+        $this->assertDatabaseHas('products', ['sku' => 'GOOD-02']);
+        $this->assertDatabaseMissing('products', ['commercial_name' => 'Sans SKU']);
+
+        $good = Batch::query()->where('lot_number', 'LOT-G')->first();
+        $this->assertNotNull($good);
+        $this->assertSame('2027-12-31', $good->expires_at?->toDateString());
+        $this->assertNull(Batch::query()->where('lot_number', 'LOT-B')->first()?->expires_at);
+
+        @unlink($path);
+    }
+
+    public function test_catalog_import_artisan_command_imports_file(): void
+    {
+        $this->seed();
+        $owner = User::query()->where('email', 'owner@manolya.test')->firstOrFail();
+        app()->instance('current_tenant_id', (string) $owner->tenant_id);
+
+        $path = storage_path('app/temp/cmd-import.csv');
+        if (! is_dir(dirname($path))) {
+            mkdir(dirname($path), 0755, true);
+        }
+
+        file_put_contents($path, implode("\n", [
+            'sku;commercial_name;purchase_price;sale_price;currency_code',
+            'CMD-01;Produit commande artisan;1000;2000;CDF',
+        ]));
+
+        $this->artisan('catalog:import', [
+            'path' => $path,
+            'tenant' => (string) $owner->tenant_id,
+            'format' => 'csv',
+            '--user' => (string) $owner->id,
+            '--delete' => true,
+        ])->assertSuccessful();
+
+        $this->assertDatabaseHas('products', [
+            'sku' => 'CMD-01',
+            'commercial_name' => 'Produit commande artisan',
+        ]);
+        $this->assertFileDoesNotExist($path);
+    }
+
+    public function test_import_catalog_job_imports_file(): void
+    {
+        $this->seed();
+        $owner = User::query()->where('email', 'owner@manolya.test')->firstOrFail();
+        app()->instance('current_tenant_id', (string) $owner->tenant_id);
+
+        $path = storage_path('app/temp/job-import.csv');
+        if (! is_dir(dirname($path))) {
+            mkdir(dirname($path), 0755, true);
+        }
+
+        file_put_contents($path, implode("\n", [
+            'sku;commercial_name;purchase_price;sale_price;currency_code',
+            'JOB-01;Produit job import;1000;2000;CDF',
+        ]));
+
+        (new ImportCatalogJob(
+            $path,
+            (string) $owner->tenant_id,
+            'csv',
+            (string) $owner->id,
+            true,
+        ))->handle(app(ProductCatalogSpreadsheet::class));
+
+        $this->assertDatabaseHas('products', [
+            'sku' => 'JOB-01',
+            'commercial_name' => 'Produit job import',
+        ]);
+        $this->assertFileDoesNotExist($path);
     }
 
     public function test_sales_export_xlsx(): void

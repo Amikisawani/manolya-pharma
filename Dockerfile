@@ -1,4 +1,4 @@
-# Manolya Pharma — production image (Coolify / Docker)
+# Manolya Pharma — production image (Coolify / Render / Docker)
 FROM node:22-bookworm AS frontend
 WORKDIR /app
 COPY package.json package-lock.json vite.config.js tsconfig.json ./
@@ -6,10 +6,11 @@ COPY resources ./resources
 COPY public ./public
 RUN npm ci && npm run build
 
-FROM php:8.3-cli-bookworm
+FROM php:8.3-fpm-bookworm
 
-RUN apt-get update && apt-get install -y \
-    git unzip libpq-dev libzip-dev libicu-dev \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git unzip nginx supervisor \
+    libpq-dev libzip-dev libicu-dev \
     && docker-php-ext-install pdo_pgsql pcntl intl bcmath zip \
     && pecl install redis \
     && docker-php-ext-enable redis \
@@ -25,10 +26,16 @@ RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoload
 COPY . .
 COPY --from=frontend /app/public/build ./public/build
 
-RUN mkdir -p storage/framework/{cache,sessions,views} storage/logs storage/app/public storage/app/temp bootstrap/cache \
+COPY docker/php.ini /usr/local/etc/php/conf.d/manolya.ini
+COPY docker/php-fpm-pool.conf /usr/local/etc/php-fpm.d/www.conf
+RUN rm -f /usr/local/etc/php-fpm.d/zz-docker.conf \
+    && mkdir -p storage/framework/{cache,sessions,views} storage/logs storage/app/public storage/app/temp bootstrap/cache \
     && chmod -R ug+rwx storage bootstrap/cache \
+    && chmod +x docker/start.sh \
     && php artisan package:discover --ansi || true
 
 EXPOSE 80
 
-CMD ["sh", "-c", "php artisan migrate --force && php artisan storage:link || true && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan serve --host=0.0.0.0 --port=80"]
+# nginx + php-fpm + queue worker. Do not use `php artisan serve` in prod:
+# a long Excel import would freeze the only process → Render 502 Bad Gateway.
+CMD ["/var/www/html/docker/start.sh"]

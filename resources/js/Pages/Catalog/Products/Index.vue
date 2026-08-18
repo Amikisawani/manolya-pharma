@@ -10,12 +10,15 @@ const props = defineProps<{
         links: Array<Record<string, any>>;
     };
     filters: { q?: string };
+    importNotice?: { type: 'success' | 'error'; message: string } | null;
 }>();
 
 const q = ref(props.filters.q ?? '');
 const importForm = useForm<{ file: File | null }>({ file: null });
 const fileInput = ref<HTMLInputElement | null>(null);
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
+let importPoll: ReturnType<typeof setTimeout> | null = null;
+let importPoll2: ReturnType<typeof setTimeout> | null = null;
 
 const search = () => router.get(route('catalog.products.index'), { q: q.value || undefined }, { preserveState: true, replace: true });
 
@@ -26,20 +29,34 @@ watch(q, () => {
 
 onBeforeUnmount(() => {
     if (searchTimer) clearTimeout(searchTimer);
+    if (importPoll) clearTimeout(importPoll);
+    if (importPoll2) clearTimeout(importPoll2);
 });
 
 const onFile = (e: Event) => {
     const input = e.target as HTMLInputElement;
     importForm.file = input.files?.[0] ?? null;
-    if (importForm.file) {
-        importForm.post(route('catalog.products.import'), {
-            forceFormData: true,
-            onFinish: () => {
-                importForm.reset();
-                if (fileInput.value) fileInput.value.value = '';
-            },
-        });
+    if (!importForm.file || importForm.processing) {
+        return;
     }
+    importForm.post(route('catalog.products.import'), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            importForm.reset();
+            if (importPoll) clearTimeout(importPoll);
+            if (importPoll2) clearTimeout(importPoll2);
+            importPoll = setTimeout(() => {
+                router.reload({ only: ['products', 'importNotice'] });
+            }, 4000);
+            importPoll2 = setTimeout(() => {
+                router.reload({ only: ['products', 'importNotice'] });
+            }, 14000);
+        },
+        onFinish: () => {
+            if (fileInput.value) fileInput.value.value = '';
+        },
+    });
 };
 </script>
 
@@ -54,18 +71,54 @@ const onFile = (e: Event) => {
                     <h1 class="mp-display mt-1 text-4xl">Médicaments</h1>
                 </div>
                 <div class="flex flex-wrap gap-2">
+                    <a :href="route('catalog.products.template')" class="mp-btn mp-btn-ghost">Modèle Excel 50 médicaments</a>
                     <a :href="route('catalog.products.export', { format: 'xlsx' })" class="mp-btn mp-btn-ghost">Export Excel</a>
                     <a :href="route('catalog.products.export', { format: 'csv' })" class="mp-btn mp-btn-ghost">Export CSV</a>
-                    <button class="mp-btn mp-btn-ghost" type="button" @click="fileInput?.click()">Import Excel/CSV</button>
-                    <input ref="fileInput" type="file" accept=".xlsx,.csv,text/csv" class="hidden" @change="onFile" />
+                    <button
+                        class="mp-btn mp-btn-ghost"
+                        type="button"
+                        :disabled="importForm.processing"
+                        @click="fileInput?.click()"
+                    >
+                        {{ importForm.processing ? 'Import en cours…' : 'Import Excel/CSV' }}
+                    </button>
+                    <input
+                        ref="fileInput"
+                        type="file"
+                        accept=".xlsx,.csv,text/csv"
+                        class="hidden"
+                        :disabled="importForm.processing"
+                        @change="onFile"
+                    />
                     <Link :href="route('catalog.products.create')" class="mp-btn mp-btn-primary">Nouveau produit</Link>
                 </div>
             </div>
         </template>
 
         <p class="mb-4 text-xs text-[color:var(--mp-faint)]">
-            Colonnes : sku;commercial_name;generic_name;barcode;manufacturer;purchase_price;sale_price;currency_code;min_stock;critical_stock;allocation_strategy;category
+            Un produit catalogue n’est vendable qu’avec un lot en stock. Le modèle Excel inclut
+            <span class="font-medium">initial_qty</span>, <span class="font-medium">lot_number</span> et
+            <span class="font-medium">expires_at</span> pour créer les lots à l’import.
+            Colonnes : sku, commercial_name, generic_name, barcode, manufacturer, purchase_price, sale_price,
+            currency_code, min_stock, critical_stock, allocation_strategy, category, description, supplier,
+            initial_qty, lot_number, expires_at, warehouse
             · Formats .xlsx / .csv (séparateur ;)
+        </p>
+        <p
+            v-if="importForm.errors.file"
+            class="mb-4 text-sm"
+            style="color: var(--mp-danger)"
+        >
+            {{ importForm.errors.file }}
+        </p>
+        <p
+            v-if="importNotice"
+            class="mb-4 border px-4 py-3 text-sm"
+            :style="importNotice.type === 'success'
+                ? { borderColor: '#a8d5c0', background: 'var(--mp-accent-soft)', color: 'var(--mp-accent)' }
+                : { borderColor: '#f0c4c0', background: '#fbebe9', color: 'var(--mp-danger)' }"
+        >
+            {{ importNotice.message }}
         </p>
 
         <div class="mb-6">

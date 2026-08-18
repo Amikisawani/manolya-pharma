@@ -66,12 +66,45 @@ Ne jamais committer `.env` ni les dumps de backup.
    branche `release/p1` (ou `main` après merge), build pack **Dockerfile**.
 2. Ajouter services **PostgreSQL 16** + **Redis**.
 3. Injecter les variables ci-dessus (`APP_KEY` générée, `APP_URL` = domaine Coolify).
-4. Le `Dockerfile` exécute déjà `migrate` + caches au démarrage.
-5. Processus supplémentaires (recommandé) :
-   - Worker : `php artisan queue:work redis --sleep=1 --tries=3 --max-time=3600`
-   - Scheduler : `php artisan schedule:work` (ou cron `* * * * * php artisan schedule:run`)
+4. Le `Dockerfile` lance nginx + PHP-FPM + le worker de file d’attente (plus `php artisan serve`). Health-check : `GET /up`.
+5. Scheduler (recommandé) : `php artisan schedule:work` (ou cron `* * * * * php artisan schedule:run`). Le worker d’import est déjà dans le conteneur.
 6. Premier login : créer un owner (ne pas laisser le mot de passe démo en prod).  
    Seed démo uniquement si environnement de test : `php artisan db:seed --force`.
+
+## Render
+
+Le 502 « Bad Gateway » (Request ID `…-SEA`) signifie que **rien ne répond derrière le proxy** : le process PHP est mort, bloqué, ou n’écoute pas `$PORT`.
+
+Ne pas utiliser `php artisan serve` en prod. L’image Docker lance **nginx + PHP-FPM** (plusieurs workers) et un **queue worker**. L’import Excel est un job (`imports`) : il ne bloque plus le site.
+
+Sur le service Render :
+
+1. Runtime **Docker**, `Dockerfile` à la racine, health check **`/up`**.
+2. Laisser Render injecter `PORT` (ne pas forcer le port 80 dans le dashboard si Render envoie 10000).
+3. Variables **sans Redis** (un seul web service) :
+
+```env
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://votre-service.onrender.com
+APP_KEY=base64:...
+
+DB_CONNECTION=pgsql
+DB_HOST=...
+DB_PORT=5432
+DB_DATABASE=...
+DB_USERNAME=...
+DB_PASSWORD=...
+
+SESSION_DRIVER=database
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+SCOUT_DRIVER=collection
+```
+
+Si `SESSION_DRIVER=redis` alors que Redis n’existe pas, chaque page plante.
+
+4. Après un 502 : **Manual Deploy → Restart** une fois l’image nginx/FPM déployée, puis réessayer l’import.
 
 ## Laravel Forge
 

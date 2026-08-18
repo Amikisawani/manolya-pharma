@@ -2,8 +2,16 @@
 
 namespace App\Domain\Catalog\Services;
 
+use App\Domain\Catalog\SampleMedicationCatalog;
+use App\Domain\Inventory\Services\OpeningStockService;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\Supplier;
+use App\Models\Warehouse;
+use App\Support\FlexibleDate;
+use DateTimeInterface;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Reader\CSV\Options as CsvReaderOptions;
 use OpenSpout\Reader\CSV\Reader as CsvReader;
@@ -16,6 +24,10 @@ use OpenSpout\Writer\XLSX\Writer as XlsxWriter;
 
 final class ProductCatalogSpreadsheet
 {
+    public function __construct(
+        private readonly OpeningStockService $openingStock,
+    ) {}
+
     /**
      * @return list<string>
      */
@@ -34,7 +46,49 @@ final class ProductCatalogSpreadsheet
             'critical_stock',
             'allocation_strategy',
             'category',
+            'description',
+            'supplier',
+            'initial_qty',
+            'lot_number',
+            'expires_at',
+            'warehouse',
         ];
+    }
+
+    /**
+     * @param  array{created?: int, updated?: int, skipped?: int, errors?: list<string>}  $result
+     */
+    public static function resultSucceeded(array $result): bool
+    {
+        return (int) ($result['created'] ?? 0) > 0 || (int) ($result['updated'] ?? 0) > 0;
+    }
+
+    /**
+     * @param  array{created?: int, updated?: int, skipped?: int, errors?: list<string>}  $result
+     */
+    public static function resultMessage(array $result): string
+    {
+        if (! self::resultSucceeded($result)) {
+            $errors = $result['errors'] ?? [];
+            $detail = $errors !== []
+                ? implode(' | ', array_slice($errors, 0, 5))
+                : 'aucune ligne valide (sku + nom commercial requis).';
+
+            return 'Aucun produit importé : '.$detail;
+        }
+
+        $message = 'Import terminé : '.(int) ($result['created'] ?? 0).' créés, '.(int) ($result['updated'] ?? 0).' mis à jour';
+        if ((int) ($result['skipped'] ?? 0) > 0) {
+            $message .= ', '.(int) $result['skipped'].' ignorés';
+        }
+        $message .= '.';
+
+        $errors = $result['errors'] ?? [];
+        if ($errors !== []) {
+            $message .= ' Certaines lignes ont échoué : '.implode(' | ', array_slice($errors, 0, 5));
+        }
+
+        return $message;
     }
 
     public function exportToFile(string $path, string $format = 'xlsx'): void
@@ -44,7 +98,7 @@ final class ProductCatalogSpreadsheet
         $writer->addRow(Row::fromValues($this->headers()));
 
         Product::query()
-            ->with('category:id,name')
+            ->with(['category:id,name', 'preferredSupplier:id,name'])
             ->orderBy('commercial_name')
             ->chunk(200, function ($products) use ($writer): void {
                 foreach ($products as $product) {
@@ -61,6 +115,12 @@ final class ProductCatalogSpreadsheet
                         (string) $product->critical_stock,
                         $product->allocation_strategy,
                         $product->category?->name,
+                        $product->description,
+                        $product->preferredSupplier?->name,
+                        '',
+                        '',
+                        '',
+                        '',
                     ]));
                 }
             });
@@ -68,11 +128,47 @@ final class ProductCatalogSpreadsheet
         $writer->close();
     }
 
+    public function writeSampleTemplate(string $path, string $format = 'xlsx'): void
+    {
+        $writer = $this->makeWriter($format);
+        $writer->openToFile($path);
+        $writer->addRow(Row::fromValues($this->headers()));
+
+        foreach (SampleMedicationCatalog::rows() as $row) {
+            $writer->addRow(Row::fromValues([
+                $row['sku'],
+                $row['commercial_name'],
+                $row['generic_name'],
+                $row['barcode'],
+                $row['manufacturer'],
+                $row['purchase_price'],
+                $row['sale_price'],
+                $row['currency_code'],
+                $row['min_stock'],
+                $row['critical_stock'],
+                $row['allocation_strategy'],
+                $row['category'],
+                $row['description'],
+                '',
+                $row['initial_qty'],
+                $row['lot_number'],
+                $row['expires_at'],
+                $row['warehouse'],
+            ]));
+        }
+
+        $writer->close();
+    }
+
     /**
      * @return array{created: int, updated: int, skipped: int, errors: list<string>}
      */
-    public function importFromFile(string $path, string $tenantId, string $format = 'xlsx'): array
+    public function importFromFile(string $path, string $tenantId, string $format = 'xlsx', ?string $userId = null): array
     {
+        if ($path === '' || ! is_readable($path)) {
+            throw new \RuntimeException('Fichier Excel introuvable sur le serveur.');
+        }
+
         $reader = $this->makeReader($format);
         $reader->open($path);
 
@@ -84,52 +180,75 @@ final class ProductCatalogSpreadsheet
         $headerMap = null;
         $line = 0;
 
-        foreach ($reader->getSheetIterator() as $sheet) {
-            foreach ($sheet->getRowIterator() as $row) {
-                $line++;
-                $values = array_map(
-                    static fn ($v) => is_scalar($v) || $v === null ? trim((string) $v) : '',
-                    $row->toArray()
-                );
+        try {
+            foreach ($reader->getSheetIterator() as $sheet) {
+                foreach ($sheet->getRowIterator() as $row) {
+                    $line++;
+                    $values = array_map(function ($v): string {
+                        if ($v instanceof DateTimeInterface) {
+                            return $v->format('Y-m-d');
+                        }
 
-                if ($headerMap === null) {
-                    $headerMap = $this->resolveHeaderMap($values);
-                    if ($this->looksLikeHeader($values)) {
-                        continue;
+                        return is_scalar($v) || $v === null ? trim((string) $v) : '';
+                    }, $row->toArray());
+
+                    if ($headerMap === null) {
+                        $headerMap = $this->resolveHeaderMap($values);
+                        if ($this->looksLikeHeader($values)) {
+                            continue;
+                        }
                     }
-                    // First row is data with positional columns
-                }
 
-                if ($this->rowEmpty($values)) {
-                    continue;
-                }
-
-                try {
-                    $payload = $this->toPayload($values, $headerMap, $tenantId);
-                    if ($payload === null) {
-                        $skipped++;
+                    if ($this->rowEmpty($values)) {
                         continue;
                     }
 
-                    $existing = Product::query()->where('sku', $payload['sku'])->first();
-                    if ($existing) {
-                        $existing->update($payload);
-                        $updated++;
-                    } else {
-                        Product::query()->create($payload);
-                        $created++;
-                    }
-                } catch (\Throwable $e) {
-                    $errors[] = "Ligne {$line} : ".$e->getMessage();
-                    if (count($errors) >= 25) {
-                        break 2;
+                    try {
+                        $status = DB::transaction(function () use ($values, $headerMap, $tenantId, $userId): string {
+                            $payload = $this->toPayload($values, $headerMap, $tenantId, $userId);
+                            if ($payload === null) {
+                                return 'skipped';
+                            }
+
+                            $stock = $payload['stock'];
+                            unset($payload['stock']);
+
+                            $existing = Product::query()->where('sku', $payload['sku'])->first();
+                            if ($existing) {
+                                $existing->update($payload);
+                                $product = $existing;
+                                $result = 'updated';
+                            } else {
+                                $product = Product::query()->create($payload);
+                                $result = 'created';
+                            }
+
+                            if ($stock !== null) {
+                                $this->openingStock->receiveForProduct($product, $stock);
+                            }
+
+                            return $result;
+                        });
+
+                        if ($status === 'skipped') {
+                            $skipped++;
+                        } elseif ($status === 'created') {
+                            $created++;
+                        } else {
+                            $updated++;
+                        }
+                    } catch (\Throwable $e) {
+                        $errors[] = "Ligne {$line} : ".$this->friendlyRowError($e);
+                        if (count($errors) >= 25) {
+                            break 2;
+                        }
                     }
                 }
+                break;
             }
-            break;
+        } finally {
+            $reader->close();
         }
-
-        $reader->close();
 
         return compact('created', 'updated', 'skipped', 'errors');
     }
@@ -137,12 +256,11 @@ final class ProductCatalogSpreadsheet
     private function makeWriter(string $format): WriterInterface
     {
         if (strtolower($format) === 'csv') {
-            $options = new CsvWriterOptions;
-            $options->FIELD_DELIMITER = ';';
-            $options->FIELD_ENCLOSURE = '"';
-            $options->SHOULD_ADD_BOM = true;
-
-            return new CsvWriter($options);
+            return new CsvWriter(new CsvWriterOptions(
+                FIELD_DELIMITER: ';',
+                FIELD_ENCLOSURE: '"',
+                SHOULD_ADD_BOM: true,
+            ));
         }
 
         return new XlsxWriter;
@@ -152,11 +270,10 @@ final class ProductCatalogSpreadsheet
     {
         $format = strtolower($format);
         if (in_array($format, ['csv', 'txt'], true)) {
-            $options = new CsvReaderOptions;
-            $options->FIELD_DELIMITER = ';';
-            $options->FIELD_ENCLOSURE = '"';
-
-            return new CsvReader($options);
+            return new CsvReader(new CsvReaderOptions(
+                FIELD_DELIMITER: ';',
+                FIELD_ENCLOSURE: '"',
+            ));
         }
 
         return new XlsxReader;
@@ -211,7 +328,7 @@ final class ProductCatalogSpreadsheet
      * @param  array<string, int>  $map
      * @return array<string, mixed>|null
      */
-    private function toPayload(array $values, array $map, string $tenantId): ?array
+    private function toPayload(array $values, array $map, string $tenantId, ?string $userId = null): ?array
     {
         $get = fn (string $key, mixed $default = null) => $values[$map[$key] ?? -1] ?? $default;
 
@@ -236,7 +353,24 @@ final class ProductCatalogSpreadsheet
             $categoryId = $category->id;
         }
 
-        return [
+        $supplierName = trim((string) $get('supplier', ''));
+        $supplierId = null;
+        if ($supplierName !== '') {
+            $supplier = Supplier::query()
+                ->where('tenant_id', $tenantId)
+                ->where('name', $supplierName)
+                ->first();
+            if (! $supplier) {
+                $supplier = Supplier::query()->create([
+                    'tenant_id' => $tenantId,
+                    'name' => $supplierName,
+                    'code' => 'S-'.strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $sku) ?: uniqid(), 0, 10)),
+                ]);
+            }
+            $supplierId = $supplier->id;
+        }
+
+        $payload = [
             'tenant_id' => $tenantId,
             'category_id' => $categoryId,
             'sku' => $sku,
@@ -244,12 +378,51 @@ final class ProductCatalogSpreadsheet
             'generic_name' => $get('generic_name') ?: null,
             'barcode' => $get('barcode') ?: null,
             'manufacturer' => $get('manufacturer') ?: null,
+            'preferred_supplier_id' => $supplierId,
             'purchase_price' => $get('purchase_price', 0) ?: 0,
             'sale_price' => $get('sale_price', 0) ?: 0,
             'currency_code' => strtoupper((string) ($get('currency_code', 'CDF') ?: 'CDF')),
             'min_stock' => $get('min_stock', 0) ?: 0,
             'critical_stock' => $get('critical_stock', 0) ?: 0,
             'allocation_strategy' => $strategy,
+            'description' => $get('description') ?: null,
+            'stock' => $this->stockPayload($get, $tenantId, $userId),
+        ];
+
+        return $payload;
+    }
+
+    /**
+     * @param  callable(string, mixed=): mixed  $get
+     * @return array<string, mixed>|null
+     */
+    private function stockPayload(callable $get, string $tenantId, ?string $userId = null): ?array
+    {
+        $qty = trim((string) $get('initial_qty', ''));
+        if ($qty === '' || ! is_numeric($qty) || (float) $qty <= 0) {
+            return null;
+        }
+
+        $warehouseId = null;
+        $warehouseKey = trim((string) $get('warehouse', ''));
+        if ($warehouseKey !== '') {
+            $warehouse = Warehouse::query()
+                ->where('tenant_id', $tenantId)
+                ->where(function ($query) use ($warehouseKey): void {
+                    $query->where('code', $warehouseKey)
+                        ->orWhere('name', $warehouseKey);
+                })
+                ->first();
+            $warehouseId = $warehouse?->id;
+        }
+
+        return [
+            'quantity' => $qty,
+            'lot_number' => $get('lot_number') ?: null,
+            'expires_at' => FlexibleDate::toDateString($get('expires_at') ?: null),
+            'warehouse_id' => $warehouseId,
+            'user_id' => $userId,
+            'notes' => 'Stock initial import catalogue',
         ];
     }
 
@@ -265,5 +438,19 @@ final class ProductCatalogSpreadsheet
         }
 
         return true;
+    }
+
+    private function friendlyRowError(\Throwable $e): string
+    {
+        $message = trim($e->getMessage());
+        if ($e instanceof QueryException || str_contains($message, 'SQLSTATE')) {
+            return 'données invalides pour cette ligne.';
+        }
+
+        if (mb_strlen($message) > 180) {
+            return 'ligne ignorée (données invalides).';
+        }
+
+        return $message !== '' ? $message : 'ligne ignorée.';
     }
 }

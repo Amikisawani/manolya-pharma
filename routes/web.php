@@ -17,6 +17,7 @@ use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\SupplierController;
 use App\Http\Controllers\Sales\SaleController;
 use App\Http\Controllers\Sales\SaleReturnController;
+use App\Http\Controllers\Settings\SiteController;
 use App\Http\Controllers\Stock\BatchController;
 use App\Http\Controllers\Stock\StockAdjustmentController;
 use App\Http\Controllers\Stock\StockMovementController;
@@ -66,6 +67,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/catalog/products/create', [ProductController::class, 'create'])->name('catalog.products.create');
     Route::post('/catalog/products', [ProductController::class, 'store'])->name('catalog.products.store');
     Route::get('/catalog/products/export', [ProductController::class, 'export'])->name('catalog.products.export');
+    Route::get('/catalog/products/template', [ProductController::class, 'template'])->name('catalog.products.template');
     Route::post('/catalog/products/import', [ProductController::class, 'import'])->name('catalog.products.import');
     Route::get('/catalog/products/{product}/edit', [ProductController::class, 'edit'])->name('catalog.products.edit');
     Route::put('/catalog/products/{product}', [ProductController::class, 'update'])->name('catalog.products.update');
@@ -118,8 +120,8 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     // Audit
     Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
 
-    Route::get('/settings/sites', [\App\Http\Controllers\Settings\SiteController::class, 'index'])->name('settings.sites.index');
-    Route::post('/settings/sites', [\App\Http\Controllers\Settings\SiteController::class, 'store'])->name('settings.sites.store');
+    Route::get('/settings/sites', [SiteController::class, 'index'])->name('settings.sites.index');
+    Route::post('/settings/sites', [SiteController::class, 'store'])->name('settings.sites.store');
 
     // Alertes
     Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
