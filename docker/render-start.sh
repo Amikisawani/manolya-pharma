@@ -85,12 +85,13 @@ php artisan route:cache
 # Non bloquant : Inertia sert surtout du JS ; les Blade PDF restent compilables à la volée
 php artisan view:cache || true
 
-(
-  while true; do
-    php artisan queue:work database --stop-when-empty --tries=3 --max-time=55 || true
-    sleep 5
-  done
-) &
+chown -R www-data:www-data storage bootstrap/cache
+chmod -R ug+rwx storage bootstrap/cache
+mkdir -p /var/log/supervisor /run/nginx
 
 PORT="${PORT:-80}"
-exec php artisan serve --host=0.0.0.0 --port="$PORT"
+sed "s/__LISTEN_PORT__/${PORT}/g" /var/www/html/docker/nginx-site.conf \
+    > /etc/nginx/sites-available/default
+ln -sfn /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+
+exec /usr/bin/supervisord -n -c /var/www/html/docker/supervisord.conf

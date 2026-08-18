@@ -14,16 +14,15 @@ COPY public ./public
 COPY --from=vendor /app/vendor/tightenco/ziggy ./vendor/tightenco/ziggy
 RUN npm ci && npm run build
 
-FROM php:8.4-cli-bookworm
+FROM php:8.4-fpm-bookworm
 
-RUN apt-get update && apt-get install -y \
-    git unzip libpq-dev libzip-dev libicu-dev \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git unzip nginx supervisor \
+    libpq-dev libzip-dev libicu-dev \
     && docker-php-ext-install pdo_pgsql pcntl intl bcmath zip \
     && pecl install redis \
     && docker-php-ext-enable redis \
     && rm -rf /var/lib/apt/lists/*
-
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
@@ -31,7 +30,10 @@ COPY --from=vendor /app/vendor ./vendor
 COPY . .
 COPY --from=frontend /app/public/build ./public/build
 
-RUN mkdir -p \
+COPY docker/php.ini /usr/local/etc/php/conf.d/manolya.ini
+COPY docker/php-fpm-pool.conf /usr/local/etc/php-fpm.d/www.conf
+RUN rm -f /usr/local/etc/php-fpm.d/zz-docker.conf \
+    && mkdir -p \
       storage/framework/cache/data \
       storage/framework/sessions \
       storage/framework/views \
@@ -40,13 +42,11 @@ RUN mkdir -p \
       storage/app/temp \
       bootstrap/cache \
     && chmod -R ug+rwx storage bootstrap/cache \
+    && chmod +x docker/render-start.sh \
     && php artisan package:discover --ansi || true
 
 EXPOSE 80
 
-COPY docker/render-start.sh /usr/local/bin/render-start.sh
-RUN chmod +x /usr/local/bin/render-start.sh
-
-# Render injecte $PORT ; Coolify/Docker local → 80 par défaut
-# Le script lance aussi un mini worker queue (mails PDF clôture)
-CMD ["/usr/local/bin/render-start.sh"]
+# nginx + PHP-FPM + queue worker. Do not use `php artisan serve`:
+# a long Excel import freezes the only process → Render 502.
+CMD ["/var/www/html/docker/render-start.sh"]

@@ -200,6 +200,9 @@ final class ProductCatalogSpreadsheet
     public function importFromFile(string $path, string $tenantId, string $format = 'xlsx'): array
     {
         $reader = $this->makeReader($format);
+        if ($path === '' || ! is_readable($path)) {
+            throw new \RuntimeException('Fichier Excel introuvable sur le serveur.');
+        }
         $reader->open($path);
 
         $created = 0;
@@ -232,6 +235,7 @@ final class ProductCatalogSpreadsheet
                             $errors[] = "Ligne {$line} : en-têtes incomplets (colonnes SKU et nom commercial obligatoires).";
                             break 2;
                         }
+
                         continue;
                     }
 
@@ -241,6 +245,7 @@ final class ProductCatalogSpreadsheet
 
                 if ($this->looksLikeHeader($values)) {
                     $skipped++;
+
                     continue;
                 }
 
@@ -436,12 +441,11 @@ final class ProductCatalogSpreadsheet
     private function makeWriter(string $format): WriterInterface
     {
         if (strtolower($format) === 'csv') {
-            $options = new CsvWriterOptions;
-            $options->FIELD_DELIMITER = ';';
-            $options->FIELD_ENCLOSURE = '"';
-            $options->SHOULD_ADD_BOM = true;
-
-            return new CsvWriter($options);
+            return new CsvWriter(new CsvWriterOptions(
+                FIELD_DELIMITER: ';',
+                FIELD_ENCLOSURE: '"',
+                SHOULD_ADD_BOM: true,
+            ));
         }
 
         return new XlsxWriter;
@@ -451,11 +455,10 @@ final class ProductCatalogSpreadsheet
     {
         $format = strtolower($format);
         if (in_array($format, ['csv', 'txt'], true)) {
-            $options = new CsvReaderOptions;
-            $options->FIELD_DELIMITER = ';';
-            $options->FIELD_ENCLOSURE = '"';
-
-            return new CsvReader($options);
+            return new CsvReader(new CsvReaderOptions(
+                FIELD_DELIMITER: ';',
+                FIELD_ENCLOSURE: '"',
+            ));
         }
 
         return new XlsxReader;

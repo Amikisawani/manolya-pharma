@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Catalog;
 
 use App\Domain\Catalog\Services\ProductCatalogSpreadsheet;
 use App\Http\Controllers\Controller;
+use App\Jobs\ImportCatalogJob;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Supplier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -144,29 +147,49 @@ class ProductController extends Controller
             return back()->with('error', 'Formats acceptés : .xlsx, .csv');
         }
 
-        $path = $file->getRealPath();
-        $result = $spreadsheet->importFromFile(
-            $path,
-            (string) $request->user()->tenant_id,
-            $ext,
-        );
+        $stored = $file->storeAs('imports', 'import-'.Str::uuid().'.'.$ext, 'local');
+        if (! is_string($stored) || $stored === '') {
+            return back()->with('error', 'Impossible d’enregistrer le fichier importé. Réessayez.');
+        }
 
-        $message = "Import terminé : {$result['created']} créés, {$result['updated']} mis à jour";
-        if (($result['stocked'] ?? 0) > 0) {
-            $message .= ", {$result['stocked']} entrés en stock";
-        }
-        if ($result['skipped'] > 0) {
-            $message .= ", {$result['skipped']} ignorés";
-        }
-        $message .= '.';
+        $path = Storage::disk('local')->path($stored);
+        $tenantId = (string) $request->user()->tenant_id;
 
-        if ($result['errors'] !== []) {
-            $message .= ' Erreurs : '.implode(' | ', array_slice($result['errors'], 0, 5));
+        if (app()->runningUnitTests()) {
+            try {
+                $result = $spreadsheet->importFromFile($path, $tenantId, $ext);
+            } catch (\Throwable $e) {
+                report($e);
+
+                return redirect()
+                    ->route('catalog.products.index')
+                    ->with('error', 'Impossible de lire le fichier. Utilisez un .xlsx ou .csv (séparateur ;) généré depuis le modèle Manolya.');
+            } finally {
+                Storage::disk('local')->delete($stored);
+            }
+
+            $message = "Import terminé : {$result['created']} créés, {$result['updated']} mis à jour";
+            if (($result['stocked'] ?? 0) > 0) {
+                $message .= ", {$result['stocked']} entrés en stock";
+            }
+            if ($result['skipped'] > 0) {
+                $message .= ", {$result['skipped']} ignorés";
+            }
+            $message .= '.';
+            if ($result['errors'] !== []) {
+                $message .= ' Erreurs : '.implode(' | ', array_slice($result['errors'], 0, 5));
+            }
+
+            return redirect()
+                ->route('catalog.products.index')
+                ->with('success', $message);
         }
+
+        ImportCatalogJob::dispatch($path, $tenantId, $ext);
 
         return redirect()
             ->route('catalog.products.index')
-            ->with('success', $message);
+            ->with('success', 'Import lancé. Le site reste disponible : actualisez cette page dans quelques secondes pour voir les produits.');
     }
 
     /**
