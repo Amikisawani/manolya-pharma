@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Catalog;
 
 use App\Domain\Catalog\Services\ProductCatalogSpreadsheet;
+use App\Domain\Inventory\Services\OpeningStockService;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Supplier;
+use App\Models\Warehouse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -49,10 +51,11 @@ class ProductController extends Controller
             'product' => null,
             'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
             'suppliers' => Supplier::query()->orderBy('name')->get(['id', 'name']),
+            'warehouses' => Warehouse::query()->orderBy('name')->get(['id', 'name', 'code', 'is_default']),
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, OpeningStockService $openingStock): RedirectResponse
     {
         $this->authorize('create', Product::class);
 
@@ -62,9 +65,34 @@ class ProductController extends Controller
             $data['allocation_strategy'] = strtolower((string) $data['allocation_strategy']);
         }
 
-        Product::query()->create($data);
+        $initialQty = $data['initial_qty'] ?? null;
+        $lotNumber = $data['lot_number'] ?? null;
+        $expiresAt = $data['expires_at'] ?? null;
+        $warehouseId = $data['warehouse_id'] ?? null;
+        unset($data['initial_qty'], $data['lot_number'], $data['expires_at'], $data['warehouse_id']);
 
-        return redirect()->route('catalog.products.index')->with('success', 'Produit créé.');
+        DB::transaction(function () use ($data, $initialQty, $lotNumber, $expiresAt, $warehouseId, $openingStock, $request): void {
+            $product = Product::query()->create($data);
+
+            if ($initialQty !== null && $initialQty !== '' && (float) $initialQty > 0) {
+                $openingStock->receiveForProduct($product, [
+                    'quantity' => $initialQty,
+                    'lot_number' => $lotNumber,
+                    'expires_at' => $expiresAt,
+                    'warehouse_id' => $warehouseId,
+                    'user_id' => $request->user()->id,
+                ]);
+            }
+        });
+
+        $hasStock = $initialQty !== null && $initialQty !== '' && (float) $initialQty > 0;
+
+        return redirect()->route('catalog.products.index')->with(
+            'success',
+            $hasStock
+                ? 'Produit créé et lot mis en stock : il peut être vendu en caisse.'
+                : 'Produit créé. Ajoutez un lot (Stock & lots ou un achat) avant de le vendre.'
+        );
     }
 
     public function edit(Product $product): Response
@@ -75,6 +103,7 @@ class ProductController extends Controller
             'product' => $product,
             'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
             'suppliers' => Supplier::query()->orderBy('name')->get(['id', 'name']),
+            'warehouses' => Warehouse::query()->orderBy('name')->get(['id', 'name', 'code', 'is_default']),
         ]);
     }
 
@@ -124,6 +153,23 @@ class ProductController extends Controller
             'Content-Type' => $format === 'csv'
                 ? 'text/csv; charset=UTF-8'
                 : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    public function template(ProductCatalogSpreadsheet $spreadsheet): BinaryFileResponse
+    {
+        $this->authorize('viewAny', Product::class);
+
+        $filename = 'manolya-modele-50-medicaments.xlsx';
+        $path = storage_path('app/temp/'.$filename);
+        if (! is_dir(dirname($path))) {
+            mkdir(dirname($path), 0755, true);
+        }
+
+        $spreadsheet->writeSampleTemplate($path, 'xlsx');
+
+        return response()->download($path, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);
     }
 
@@ -187,6 +233,10 @@ class ProductController extends Controller
             'critical_stock' => ['nullable', 'numeric', 'min:0'],
             'allocation_strategy' => ['nullable', 'string', 'in:fefo,fifo,lifo,FEFO,FIFO,LIFO'],
             'description' => ['nullable', 'string'],
+            'initial_qty' => ['nullable', 'numeric', 'min:0'],
+            'lot_number' => ['nullable', 'string', 'max:64'],
+            'expires_at' => ['nullable', 'date'],
+            'warehouse_id' => ['nullable', 'uuid', 'exists:warehouses,id'],
         ]);
     }
 }

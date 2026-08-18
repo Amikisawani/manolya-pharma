@@ -1,0 +1,38 @@
+# Catalogue & stock initial
+
+## Pourquoi un nouveau produit n’est pas vendable tout de suite
+
+Dans Manolya, **la fiche produit** (catalogue) et **le stock** (lots) sont séparés :
+
+1. *Nouveau produit* enregistre le médicament (nom, SKU, prix…).
+2. La caisse ne vend que s’il existe un **lot** avec une quantité > 0 dans l’entrepôt (FEFO).
+3. Sans lot, l’encaissement échoue : *stock insuffisant*.
+
+C’est volontaire : une pharmacie suit les lots et les dates de péremption.
+
+## Comment mettre en stock dès la création
+
+Sur **Nouveau produit**, bloc **Stock initial** :
+
+- quantité
+- n° de lot
+- péremption
+- entrepôt
+
+Le produit est alors vendable en caisse immédiatement.
+
+Sans quantité, le message rappelle d’ajouter un lot via **Stock & lots** ou une **réception d’achat**.
+
+## Fichier Excel 50 médicaments
+
+Téléchargement : Catalogue → **Modèle Excel 50 médicaments**  
+(`GET /catalog/products/template`)
+
+Copie versionnée : `docs/samples/manolya-catalogue-50-medicaments.xlsx`
+
+Colonnes = formulaire + stock :
+
+`sku, commercial_name, generic_name, barcode, manufacturer, purchase_price, sale_price, currency_code, min_stock, critical_stock, allocation_strategy, category, description, supplier, initial_qty, lot_number, expires_at, warehouse`
+
+`warehouse` = code (ex. `WH-MAIN`).  
+`initial_qty` vide = catalogue seul, pas de lot.

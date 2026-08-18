@@ -54,6 +54,7 @@ const onFile = (e: Event) => {
                     <h1 class="mp-display mt-1 text-4xl">Médicaments</h1>
                 </div>
                 <div class="flex flex-wrap gap-2">
+                    <a :href="route('catalog.products.template')" class="mp-btn mp-btn-ghost">Modèle Excel 50 médicaments</a>
                     <a :href="route('catalog.products.export', { format: 'xlsx' })" class="mp-btn mp-btn-ghost">Export Excel</a>
                     <a :href="route('catalog.products.export', { format: 'csv' })" class="mp-btn mp-btn-ghost">Export CSV</a>
                     <button class="mp-btn mp-btn-ghost" type="button" @click="fileInput?.click()">Import Excel/CSV</button>
@@ -64,7 +65,12 @@ const onFile = (e: Event) => {
         </template>
 
         <p class="mb-4 text-xs text-[color:var(--mp-faint)]">
-            Colonnes : sku;commercial_name;generic_name;barcode;manufacturer;purchase_price;sale_price;currency_code;min_stock;critical_stock;allocation_strategy;category
+            Un produit catalogue n’est vendable qu’avec un lot en stock. Le modèle Excel inclut
+            <span class="font-medium">initial_qty</span>, <span class="font-medium">lot_number</span> et
+            <span class="font-medium">expires_at</span> pour créer les lots à l’import.
+            Colonnes : sku, commercial_name, generic_name, barcode, manufacturer, purchase_price, sale_price,
+            currency_code, min_stock, critical_stock, allocation_strategy, category, description, supplier,
+            initial_qty, lot_number, expires_at, warehouse
             · Formats .xlsx / .csv (séparateur ;)
         </p>
 
