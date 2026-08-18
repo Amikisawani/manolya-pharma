@@ -66,12 +66,25 @@ Ne jamais committer `.env` ni les dumps de backup.
    branche `release/p1` (ou `main` après merge), build pack **Dockerfile**.
 2. Ajouter services **PostgreSQL 16** + **Redis**.
 3. Injecter les variables ci-dessus (`APP_KEY` générée, `APP_URL` = domaine Coolify).
-4. Le `Dockerfile` exécute déjà `migrate` + caches au démarrage.
-5. Processus supplémentaires (recommandé) :
+4. Le `Dockerfile` exécute déjà `migrate` + caches au démarrage. Il écoute `$PORT` (Render) ou 80, avec `PHP_CLI_SERVER_WORKERS` et `--no-reload` pour ne pas geler le health-check pendant un import.
+5. Health-check HTTP : `GET /up`
+6. Processus supplémentaires (recommandé) :
    - Worker : `php artisan queue:work redis --sleep=1 --tries=3 --max-time=3600`
    - Scheduler : `php artisan schedule:work` (ou cron `* * * * * php artisan schedule:run`)
-6. Premier login : créer un owner (ne pas laisser le mot de passe démo en prod).  
+7. Premier login : créer un owner (ne pas laisser le mot de passe démo en prod).  
    Seed démo uniquement si environnement de test : `php artisan db:seed --force`.
+
+## Render
+
+Le 502 « Bad Gateway » apparaît si **une seule requête PHP** (souvent l’import Excel) bloque `php artisan serve` plus longtemps que le timeout Render (~30 s) : le proxy coupe, le health-check échoue, tout le site tombe.
+
+Mitigations dans ce dépôt :
+
+- import catalogue lancé en processus séparé (`catalog:import`)
+- `PHP_CLI_SERVER_WORKERS=3` + `artisan serve --no-reload`
+- health check : `/up`
+
+Sur le service Render : runtime **Docker**, port **10000** ou laisser `PORT`, health check path `/up`.
 
 ## Laravel Forge
 

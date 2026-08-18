@@ -31,4 +31,7 @@ RUN mkdir -p storage/framework/{cache,sessions,views} storage/logs storage/app/p
 
 EXPOSE 80
 
-CMD ["sh", "-c", "php artisan migrate --force && php artisan storage:link || true && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan serve --host=0.0.0.0 --port=80"]
+# Render/Coolify : $PORT + plusieurs workers. Sans --no-reload, artisan serve
+# reste mono-processus : un import Excel bloque le health-check → 502 Bad Gateway.
+ENV PHP_CLI_SERVER_WORKERS=3
+CMD ["sh", "-c", "php artisan migrate --force && php artisan storage:link || true && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan serve --host=0.0.0.0 --port=${PORT:-80} --no-reload"]

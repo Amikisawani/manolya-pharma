@@ -122,6 +122,37 @@ class ProductSpreadsheetTest extends TestCase
         @unlink($path);
     }
 
+    public function test_catalog_import_artisan_command_imports_file(): void
+    {
+        $this->seed();
+        $owner = User::query()->where('email', 'owner@manolya.test')->firstOrFail();
+        app()->instance('current_tenant_id', (string) $owner->tenant_id);
+
+        $path = storage_path('app/temp/cmd-import.csv');
+        if (! is_dir(dirname($path))) {
+            mkdir(dirname($path), 0755, true);
+        }
+
+        file_put_contents($path, implode("\n", [
+            'sku;commercial_name;purchase_price;sale_price;currency_code',
+            'CMD-01;Produit commande artisan;1000;2000;CDF',
+        ]));
+
+        $this->artisan('catalog:import', [
+            'path' => $path,
+            'tenant' => (string) $owner->tenant_id,
+            'format' => 'csv',
+            '--user' => (string) $owner->id,
+            '--delete' => true,
+        ])->assertSuccessful();
+
+        $this->assertDatabaseHas('products', [
+            'sku' => 'CMD-01',
+            'commercial_name' => 'Produit commande artisan',
+        ]);
+        $this->assertFileDoesNotExist($path);
+    }
+
     public function test_sales_export_xlsx(): void
     {
         $this->seed();

@@ -11,6 +11,7 @@ use App\Models\Supplier;
 use App\Models\Warehouse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -37,11 +38,22 @@ class ProductController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        $importResult = Cache::pull('catalog-import:'.$request->user()->tenant_id);
+        $importNotice = null;
+        if (is_array($importResult)) {
+            $ok = ProductCatalogSpreadsheet::resultSucceeded($importResult);
+            $importNotice = [
+                'type' => $ok ? 'success' : 'error',
+                'message' => ProductCatalogSpreadsheet::resultMessage($importResult),
+            ];
+        }
+
         return Inertia::render('Catalog/Products/Index', [
             'products' => $products,
             'filters' => [
                 'q' => $request->string('q')->toString(),
             ],
+            'importNotice' => $importNotice,
         ]);
     }
 
@@ -199,14 +211,51 @@ class ProductController extends Controller
         }
 
         $path = Storage::disk('local')->path($stored);
+
+        if (app()->runningUnitTests()) {
+            return $this->importSynchronously(
+                $spreadsheet,
+                $path,
+                $stored,
+                (string) $request->user()->tenant_id,
+                $ext,
+                (string) $request->user()->id,
+            );
+        }
+
+        if (! $this->startBackgroundImport(
+            $path,
+            (string) $request->user()->tenant_id,
+            $ext,
+            (string) $request->user()->id,
+        )) {
+            return $this->importSynchronously(
+                $spreadsheet,
+                $path,
+                $stored,
+                (string) $request->user()->tenant_id,
+                $ext,
+                (string) $request->user()->id,
+            );
+        }
+
+        return redirect()
+            ->route('catalog.products.index')
+            ->with('success', 'Import lancé. Le site reste disponible : actualisez cette page dans quelques secondes pour voir les produits.');
+    }
+
+    private function importSynchronously(
+        ProductCatalogSpreadsheet $spreadsheet,
+        string $path,
+        string $stored,
+        string $tenantId,
+        string $ext,
+        string $userId,
+    ): RedirectResponse {
         @set_time_limit(180);
 
         try {
-            $result = $spreadsheet->importFromFile(
-                $path,
-                (string) $request->user()->tenant_id,
-                $ext,
-            );
+            $result = $spreadsheet->importFromFile($path, $tenantId, $ext, $userId);
         } catch (\Throwable $e) {
             report($e);
 
@@ -217,29 +266,35 @@ class ProductController extends Controller
             Storage::disk('local')->delete($stored);
         }
 
-        if ($result['created'] === 0 && $result['updated'] === 0) {
-            $detail = $result['errors'] !== []
-                ? implode(' | ', array_slice($result['errors'], 0, 5))
-                : 'aucune ligne valide (sku + nom commercial requis).';
-
-            return redirect()
-                ->route('catalog.products.index')
-                ->with('error', 'Aucun produit importé : '.$detail);
-        }
-
-        $message = "Import terminé : {$result['created']} créés, {$result['updated']} mis à jour";
-        if ($result['skipped'] > 0) {
-            $message .= ", {$result['skipped']} ignorés";
-        }
-        $message .= '.';
-
-        if ($result['errors'] !== []) {
-            $message .= ' Certaines lignes ont échoué : '.implode(' | ', array_slice($result['errors'], 0, 5));
-        }
+        $ok = ProductCatalogSpreadsheet::resultSucceeded($result);
+        $message = ProductCatalogSpreadsheet::resultMessage($result);
 
         return redirect()
             ->route('catalog.products.index')
-            ->with('success', $message);
+            ->with($ok ? 'success' : 'error', $message);
+    }
+
+    private function startBackgroundImport(string $path, string $tenantId, string $ext, string $userId): bool
+    {
+        $log = storage_path('logs/catalog-import.log');
+        $command = sprintf(
+            'cd %s && nohup %s %s catalog:import %s %s %s --user=%s --delete >> %s 2>&1 & echo $!',
+            escapeshellarg(base_path()),
+            escapeshellarg(PHP_BINARY),
+            escapeshellarg(base_path('artisan')),
+            escapeshellarg($path),
+            escapeshellarg($tenantId),
+            escapeshellarg($ext),
+            escapeshellarg($userId),
+            escapeshellarg($log),
+        );
+
+        $output = [];
+        $code = 0;
+        @exec($command, $output, $code);
+        $pid = (int) ($output[0] ?? 0);
+
+        return $pid > 0;
     }
 
     /**

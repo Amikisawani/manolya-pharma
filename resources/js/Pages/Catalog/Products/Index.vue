@@ -10,12 +10,15 @@ const props = defineProps<{
         links: Array<Record<string, any>>;
     };
     filters: { q?: string };
+    importNotice?: { type: 'success' | 'error'; message: string } | null;
 }>();
 
 const q = ref(props.filters.q ?? '');
 const importForm = useForm<{ file: File | null }>({ file: null });
 const fileInput = ref<HTMLInputElement | null>(null);
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
+let importPoll: ReturnType<typeof setTimeout> | null = null;
+let importPoll2: ReturnType<typeof setTimeout> | null = null;
 
 const search = () => router.get(route('catalog.products.index'), { q: q.value || undefined }, { preserveState: true, replace: true });
 
@@ -26,6 +29,8 @@ watch(q, () => {
 
 onBeforeUnmount(() => {
     if (searchTimer) clearTimeout(searchTimer);
+    if (importPoll) clearTimeout(importPoll);
+    if (importPoll2) clearTimeout(importPoll2);
 });
 
 const onFile = (e: Event) => {
@@ -39,6 +44,14 @@ const onFile = (e: Event) => {
         preserveScroll: true,
         onSuccess: () => {
             importForm.reset();
+            if (importPoll) clearTimeout(importPoll);
+            if (importPoll2) clearTimeout(importPoll2);
+            importPoll = setTimeout(() => {
+                router.reload({ only: ['products', 'importNotice'] });
+            }, 4000);
+            importPoll2 = setTimeout(() => {
+                router.reload({ only: ['products', 'importNotice'] });
+            }, 14000);
         },
         onFinish: () => {
             if (fileInput.value) fileInput.value.value = '';
@@ -97,6 +110,15 @@ const onFile = (e: Event) => {
             style="color: var(--mp-danger)"
         >
             {{ importForm.errors.file }}
+        </p>
+        <p
+            v-if="importNotice"
+            class="mb-4 border px-4 py-3 text-sm"
+            :style="importNotice.type === 'success'
+                ? { borderColor: '#a8d5c0', background: 'var(--mp-accent-soft)', color: 'var(--mp-accent)' }
+                : { borderColor: '#f0c4c0', background: '#fbebe9', color: 'var(--mp-danger)' }"
+        >
+            {{ importNotice.message }}
         </p>
 
         <div class="mb-6">

@@ -55,6 +55,42 @@ final class ProductCatalogSpreadsheet
         ];
     }
 
+    /**
+     * @param  array{created?: int, updated?: int, skipped?: int, errors?: list<string>}  $result
+     */
+    public static function resultSucceeded(array $result): bool
+    {
+        return (int) ($result['created'] ?? 0) > 0 || (int) ($result['updated'] ?? 0) > 0;
+    }
+
+    /**
+     * @param  array{created?: int, updated?: int, skipped?: int, errors?: list<string>}  $result
+     */
+    public static function resultMessage(array $result): string
+    {
+        if (! self::resultSucceeded($result)) {
+            $errors = $result['errors'] ?? [];
+            $detail = $errors !== []
+                ? implode(' | ', array_slice($errors, 0, 5))
+                : 'aucune ligne valide (sku + nom commercial requis).';
+
+            return 'Aucun produit importé : '.$detail;
+        }
+
+        $message = 'Import terminé : '.(int) ($result['created'] ?? 0).' créés, '.(int) ($result['updated'] ?? 0).' mis à jour';
+        if ((int) ($result['skipped'] ?? 0) > 0) {
+            $message .= ', '.(int) $result['skipped'].' ignorés';
+        }
+        $message .= '.';
+
+        $errors = $result['errors'] ?? [];
+        if ($errors !== []) {
+            $message .= ' Certaines lignes ont échoué : '.implode(' | ', array_slice($errors, 0, 5));
+        }
+
+        return $message;
+    }
+
     public function exportToFile(string $path, string $format = 'xlsx'): void
     {
         $writer = $this->makeWriter($format);
@@ -127,7 +163,7 @@ final class ProductCatalogSpreadsheet
     /**
      * @return array{created: int, updated: int, skipped: int, errors: list<string>}
      */
-    public function importFromFile(string $path, string $tenantId, string $format = 'xlsx'): array
+    public function importFromFile(string $path, string $tenantId, string $format = 'xlsx', ?string $userId = null): array
     {
         if ($path === '' || ! is_readable($path)) {
             throw new \RuntimeException('Fichier Excel introuvable sur le serveur.');
@@ -168,8 +204,8 @@ final class ProductCatalogSpreadsheet
                     }
 
                     try {
-                        $status = DB::transaction(function () use ($values, $headerMap, $tenantId): string {
-                            $payload = $this->toPayload($values, $headerMap, $tenantId);
+                        $status = DB::transaction(function () use ($values, $headerMap, $tenantId, $userId): string {
+                            $payload = $this->toPayload($values, $headerMap, $tenantId, $userId);
                             if ($payload === null) {
                                 return 'skipped';
                             }
@@ -292,7 +328,7 @@ final class ProductCatalogSpreadsheet
      * @param  array<string, int>  $map
      * @return array<string, mixed>|null
      */
-    private function toPayload(array $values, array $map, string $tenantId): ?array
+    private function toPayload(array $values, array $map, string $tenantId, ?string $userId = null): ?array
     {
         $get = fn (string $key, mixed $default = null) => $values[$map[$key] ?? -1] ?? $default;
 
@@ -350,7 +386,7 @@ final class ProductCatalogSpreadsheet
             'critical_stock' => $get('critical_stock', 0) ?: 0,
             'allocation_strategy' => $strategy,
             'description' => $get('description') ?: null,
-            'stock' => $this->stockPayload($get, $tenantId),
+            'stock' => $this->stockPayload($get, $tenantId, $userId),
         ];
 
         return $payload;
@@ -360,7 +396,7 @@ final class ProductCatalogSpreadsheet
      * @param  callable(string, mixed=): mixed  $get
      * @return array<string, mixed>|null
      */
-    private function stockPayload(callable $get, string $tenantId): ?array
+    private function stockPayload(callable $get, string $tenantId, ?string $userId = null): ?array
     {
         $qty = trim((string) $get('initial_qty', ''));
         if ($qty === '' || ! is_numeric($qty) || (float) $qty <= 0) {
@@ -385,6 +421,7 @@ final class ProductCatalogSpreadsheet
             'lot_number' => $get('lot_number') ?: null,
             'expires_at' => FlexibleDate::toDateString($get('expires_at') ?: null),
             'warehouse_id' => $warehouseId,
+            'user_id' => $userId,
             'notes' => 'Stock initial import catalogue',
         ];
     }
