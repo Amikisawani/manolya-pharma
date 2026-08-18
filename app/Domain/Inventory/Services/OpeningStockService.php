@@ -2,10 +2,13 @@
 
 namespace App\Domain\Inventory\Services;
 
+use App\Domain\Inventory\Exceptions\OpeningStockException;
 use App\Models\Batch;
 use App\Models\Product;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Support\FlexibleDate;
+use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -87,17 +90,29 @@ final class OpeningStockService
     private function resolveWarehouse(Product $product, ?string $warehouseId): Warehouse
     {
         if ($warehouseId) {
-            return Warehouse::query()
+            $warehouse = Warehouse::query()
                 ->where('tenant_id', $product->tenant_id)
                 ->whereKey($warehouseId)
-                ->firstOrFail();
+                ->first();
+
+            if (! $warehouse) {
+                throw new OpeningStockException('Dépôt introuvable pour ce produit.');
+            }
+
+            return $warehouse;
         }
 
-        return Warehouse::query()
+        $warehouse = Warehouse::query()
             ->where('tenant_id', $product->tenant_id)
             ->where('is_default', true)
             ->first()
-            ?? Warehouse::query()->where('tenant_id', $product->tenant_id)->firstOrFail();
+            ?? Warehouse::query()->where('tenant_id', $product->tenant_id)->first();
+
+        if (! $warehouse) {
+            throw new OpeningStockException('Aucun dépôt actif. Créez un dépôt avant d’importer le stock.');
+        }
+
+        return $warehouse;
     }
 
     private function normalizeQuantity(mixed $quantity): string
@@ -113,10 +128,18 @@ final class OpeningStockService
 
     private function nullableDate(mixed $value): ?string
     {
-        if (! is_string($value) || trim($value) === '') {
+        if ($value instanceof DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        if (! is_string($value) && ! is_numeric($value)) {
             return null;
         }
 
-        return trim($value);
+        if (is_string($value) && trim($value) === '') {
+            return null;
+        }
+
+        return FlexibleDate::toDateString($value);
     }
 }

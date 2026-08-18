@@ -12,6 +12,8 @@ use App\Models\Warehouse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -191,12 +193,39 @@ class ProductController extends Controller
             return back()->with('error', 'Formats acceptés : .xlsx, .csv');
         }
 
-        $path = $file->getRealPath();
-        $result = DB::transaction(fn () => $spreadsheet->importFromFile(
-            $path,
-            (string) $request->user()->tenant_id,
-            $ext,
-        ));
+        $stored = $file->storeAs('imports', 'import-'.Str::uuid().'.'.$ext, 'local');
+        if (! is_string($stored) || $stored === '') {
+            return back()->with('error', 'Impossible d’enregistrer le fichier importé. Réessayez.');
+        }
+
+        $path = Storage::disk('local')->path($stored);
+        @set_time_limit(180);
+
+        try {
+            $result = $spreadsheet->importFromFile(
+                $path,
+                (string) $request->user()->tenant_id,
+                $ext,
+            );
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()
+                ->route('catalog.products.index')
+                ->with('error', 'Impossible de lire le fichier. Utilisez un .xlsx ou .csv (séparateur ;) généré depuis le modèle Manolya.');
+        } finally {
+            Storage::disk('local')->delete($stored);
+        }
+
+        if ($result['created'] === 0 && $result['updated'] === 0) {
+            $detail = $result['errors'] !== []
+                ? implode(' | ', array_slice($result['errors'], 0, 5))
+                : 'aucune ligne valide (sku + nom commercial requis).';
+
+            return redirect()
+                ->route('catalog.products.index')
+                ->with('error', 'Aucun produit importé : '.$detail);
+        }
 
         $message = "Import terminé : {$result['created']} créés, {$result['updated']} mis à jour";
         if ($result['skipped'] > 0) {
@@ -205,7 +234,7 @@ class ProductController extends Controller
         $message .= '.';
 
         if ($result['errors'] !== []) {
-            $message .= ' Erreurs : '.implode(' | ', array_slice($result['errors'], 0, 5));
+            $message .= ' Certaines lignes ont échoué : '.implode(' | ', array_slice($result['errors'], 0, 5));
         }
 
         return redirect()

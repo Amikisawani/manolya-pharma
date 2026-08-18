@@ -8,7 +8,10 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\Warehouse;
+use App\Support\FlexibleDate;
 use DateTimeInterface;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Reader\CSV\Options as CsvReaderOptions;
 use OpenSpout\Reader\CSV\Reader as CsvReader;
@@ -126,6 +129,10 @@ final class ProductCatalogSpreadsheet
      */
     public function importFromFile(string $path, string $tenantId, string $format = 'xlsx'): array
     {
+        if ($path === '' || ! is_readable($path)) {
+            throw new \RuntimeException('Fichier Excel introuvable sur le serveur.');
+        }
+
         $reader = $this->makeReader($format);
         $reader->open($path);
 
@@ -137,64 +144,75 @@ final class ProductCatalogSpreadsheet
         $headerMap = null;
         $line = 0;
 
-        foreach ($reader->getSheetIterator() as $sheet) {
-            foreach ($sheet->getRowIterator() as $row) {
-                $line++;
-                $values = array_map(function ($v): string {
-                    if ($v instanceof DateTimeInterface) {
-                        return $v->format('Y-m-d');
+        try {
+            foreach ($reader->getSheetIterator() as $sheet) {
+                foreach ($sheet->getRowIterator() as $row) {
+                    $line++;
+                    $values = array_map(function ($v): string {
+                        if ($v instanceof DateTimeInterface) {
+                            return $v->format('Y-m-d');
+                        }
+
+                        return is_scalar($v) || $v === null ? trim((string) $v) : '';
+                    }, $row->toArray());
+
+                    if ($headerMap === null) {
+                        $headerMap = $this->resolveHeaderMap($values);
+                        if ($this->looksLikeHeader($values)) {
+                            continue;
+                        }
                     }
 
-                    return is_scalar($v) || $v === null ? trim((string) $v) : '';
-                }, $row->toArray());
-
-                if ($headerMap === null) {
-                    $headerMap = $this->resolveHeaderMap($values);
-                    if ($this->looksLikeHeader($values)) {
-                        continue;
-                    }
-                    // First row is data with positional columns
-                }
-
-                if ($this->rowEmpty($values)) {
-                    continue;
-                }
-
-                try {
-                    $payload = $this->toPayload($values, $headerMap, $tenantId);
-                    if ($payload === null) {
-                        $skipped++;
-
+                    if ($this->rowEmpty($values)) {
                         continue;
                     }
 
-                    $stock = $payload['stock'];
-                    unset($payload['stock']);
+                    try {
+                        $status = DB::transaction(function () use ($values, $headerMap, $tenantId): string {
+                            $payload = $this->toPayload($values, $headerMap, $tenantId);
+                            if ($payload === null) {
+                                return 'skipped';
+                            }
 
-                    $existing = Product::query()->where('sku', $payload['sku'])->first();
-                    if ($existing) {
-                        $existing->update($payload);
-                        $product = $existing;
-                        $updated++;
-                    } else {
-                        $product = Product::query()->create($payload);
-                        $created++;
-                    }
+                            $stock = $payload['stock'];
+                            unset($payload['stock']);
 
-                    if ($stock !== null) {
-                        $this->openingStock->receiveForProduct($product, $stock);
-                    }
-                } catch (\Throwable $e) {
-                    $errors[] = "Ligne {$line} : ".$e->getMessage();
-                    if (count($errors) >= 25) {
-                        break 2;
+                            $existing = Product::query()->where('sku', $payload['sku'])->first();
+                            if ($existing) {
+                                $existing->update($payload);
+                                $product = $existing;
+                                $result = 'updated';
+                            } else {
+                                $product = Product::query()->create($payload);
+                                $result = 'created';
+                            }
+
+                            if ($stock !== null) {
+                                $this->openingStock->receiveForProduct($product, $stock);
+                            }
+
+                            return $result;
+                        });
+
+                        if ($status === 'skipped') {
+                            $skipped++;
+                        } elseif ($status === 'created') {
+                            $created++;
+                        } else {
+                            $updated++;
+                        }
+                    } catch (\Throwable $e) {
+                        $errors[] = "Ligne {$line} : ".$this->friendlyRowError($e);
+                        if (count($errors) >= 25) {
+                            break 2;
+                        }
                     }
                 }
+                break;
             }
-            break;
+        } finally {
+            $reader->close();
         }
-
-        $reader->close();
 
         return compact('created', 'updated', 'skipped', 'errors');
     }
@@ -367,7 +385,7 @@ final class ProductCatalogSpreadsheet
         return [
             'quantity' => $qty,
             'lot_number' => $get('lot_number') ?: null,
-            'expires_at' => $get('expires_at') ?: null,
+            'expires_at' => FlexibleDate::toDateString($get('expires_at') ?: null),
             'warehouse_id' => $warehouseId,
             'notes' => 'Stock initial import catalogue',
         ];
@@ -385,5 +403,19 @@ final class ProductCatalogSpreadsheet
         }
 
         return true;
+    }
+
+    private function friendlyRowError(\Throwable $e): string
+    {
+        $message = trim($e->getMessage());
+        if ($e instanceof QueryException || str_contains($message, 'SQLSTATE')) {
+            return 'données invalides pour cette ligne.';
+        }
+
+        if (mb_strlen($message) > 180) {
+            return 'ligne ignorée (données invalides).';
+        }
+
+        return $message !== '' ? $message : 'ligne ignorée.';
     }
 }

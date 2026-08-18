@@ -31,15 +31,19 @@ onBeforeUnmount(() => {
 const onFile = (e: Event) => {
     const input = e.target as HTMLInputElement;
     importForm.file = input.files?.[0] ?? null;
-    if (importForm.file) {
-        importForm.post(route('catalog.products.import'), {
-            forceFormData: true,
-            onFinish: () => {
-                importForm.reset();
-                if (fileInput.value) fileInput.value.value = '';
-            },
-        });
+    if (!importForm.file || importForm.processing) {
+        return;
     }
+    importForm.post(route('catalog.products.import'), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            importForm.reset();
+        },
+        onFinish: () => {
+            if (fileInput.value) fileInput.value.value = '';
+        },
+    });
 };
 </script>
 
@@ -57,8 +61,22 @@ const onFile = (e: Event) => {
                     <a :href="route('catalog.products.template')" class="mp-btn mp-btn-ghost">Modèle Excel 50 médicaments</a>
                     <a :href="route('catalog.products.export', { format: 'xlsx' })" class="mp-btn mp-btn-ghost">Export Excel</a>
                     <a :href="route('catalog.products.export', { format: 'csv' })" class="mp-btn mp-btn-ghost">Export CSV</a>
-                    <button class="mp-btn mp-btn-ghost" type="button" @click="fileInput?.click()">Import Excel/CSV</button>
-                    <input ref="fileInput" type="file" accept=".xlsx,.csv,text/csv" class="hidden" @change="onFile" />
+                    <button
+                        class="mp-btn mp-btn-ghost"
+                        type="button"
+                        :disabled="importForm.processing"
+                        @click="fileInput?.click()"
+                    >
+                        {{ importForm.processing ? 'Import en cours…' : 'Import Excel/CSV' }}
+                    </button>
+                    <input
+                        ref="fileInput"
+                        type="file"
+                        accept=".xlsx,.csv,text/csv"
+                        class="hidden"
+                        :disabled="importForm.processing"
+                        @change="onFile"
+                    />
                     <Link :href="route('catalog.products.create')" class="mp-btn mp-btn-primary">Nouveau produit</Link>
                 </div>
             </div>
@@ -72,6 +90,13 @@ const onFile = (e: Event) => {
             currency_code, min_stock, critical_stock, allocation_strategy, category, description, supplier,
             initial_qty, lot_number, expires_at, warehouse
             · Formats .xlsx / .csv (séparateur ;)
+        </p>
+        <p
+            v-if="importForm.errors.file"
+            class="mb-4 text-sm"
+            style="color: var(--mp-danger)"
+        >
+            {{ importForm.errors.file }}
         </p>
 
         <div class="mb-6">

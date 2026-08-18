@@ -36,3 +36,14 @@ Colonnes = formulaire + stock :
 
 `warehouse` = code (ex. `WH-MAIN`).  
 `initial_qty` vide = catalogue seul, pas de lot.
+
+## Import en production
+
+Si l’import échoue, un bandeau rouge s’affiche (plus une page d’erreur vide). Causes fréquentes :
+
+- fichier `.xls` (Excel 97) — exporter en **.xlsx**
+- dates de péremption illisibles — préférer `AAAA-MM-JJ` (ex. `2027-12-31`) ou `JJ/MM/AAAA`
+- aucun dépôt créé pour la pharmacie
+- fichier corrompu ou trop lourd (> 10 Mo)
+
+Une ligne invalide n’annule plus tout le fichier : les lignes correctes sont importées, les autres sont listées dans le message.
