@@ -1,3 +1,5 @@
+@import './receipt-58mm.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

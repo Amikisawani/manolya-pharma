@@ -23,8 +23,9 @@ final class SaleTicketPdfGenerator
 
         $payload = $this->payload($sale);
 
+        // 58 mm = 164.41 pt. Hauteur rouleau généreuse pour le PT-210.
         return Pdf::loadView('sales.ticket', ['ticket' => $payload])
-            ->setPaper('a4')
+            ->setPaper([0, 0, 164.41, 1134], 'portrait')
             ->output();
     }
 

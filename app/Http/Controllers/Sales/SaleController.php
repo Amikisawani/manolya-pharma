@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Sales;
 
 use App\Domain\Reporting\Services\OperationalSpreadsheetExport;
+use App\Domain\Sales\Receipts\ThermalReceiptBuilder;
 use App\Domain\Sales\Services\SaleTicketPdfGenerator;
 use App\Http\Controllers\Controller;
+use App\Models\CashRegisterSession;
 use App\Models\Sale;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -62,7 +64,7 @@ class SaleController extends Controller
         ])->deleteFileAfterSend(true);
     }
 
-    public function show(Request $request, Sale $sale): Response
+    public function show(Request $request, Sale $sale, ThermalReceiptBuilder $receipts): Response
     {
         $this->authorize('view', $sale);
 
@@ -71,22 +73,28 @@ class SaleController extends Controller
             'lines.batch:id,lot_number,expires_at',
             'payments',
             'cashier:id,name,email,phone',
-            'site:id,name',
+            'site:id,name,address',
+            'tenant:id,name,timezone',
             'warehouse:id,name',
             'returns.lines',
             'cashRegisterSession:id,number,status,opened_at',
         ]);
 
         $canRefund = $request->user()?->can('refund', $sale) ?? false;
+        $printOnLoad = $request->boolean('print')
+            || $request->boolean('reprint')
+            || (bool) $request->session()->pull('print_receipt');
 
         return Inertia::render('Sales/Show', [
             'sale' => $sale,
             'canRefund' => $canRefund,
-            'hasOpenSession' => \App\Models\CashRegisterSession::query()
+            'hasOpenSession' => CashRegisterSession::query()
                 ->where('opened_by', $request->user()?->id)
-                ->where('status', \App\Models\CashRegisterSession::STATUS_OPEN)
+                ->where('status', CashRegisterSession::STATUS_OPEN)
                 ->exists(),
             'ticketPdfUrl' => route('sales.ticket', $sale),
+            'receipt' => $receipts->fromSale($sale, $request->boolean('reprint'))->toArray(),
+            'printOnLoad' => $printOnLoad,
         ]);
     }
 

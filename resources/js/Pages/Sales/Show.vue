@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Receipt58mm from '@/Components/Receipt58mm.vue';
 import MoneyAmount from '@/Components/MoneyAmount.vue';
 import { formatQty } from '@/Composables/useQuantity';
+import { useThermalPrint } from '@/Composables/useThermalPrint';
+import type { ThermalReceiptPayload } from '@/types/receipt';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, reactive } from 'vue';
 
@@ -10,14 +13,14 @@ const props = defineProps<{
     canRefund?: boolean;
     hasOpenSession?: boolean;
     ticketPdfUrl: string;
+    receipt: ThermalReceiptPayload;
+    printOnLoad?: boolean;
 }>();
+
+const { printReceipt } = useThermalPrint(Boolean(props.printOnLoad));
 
 const methodLabel = (method: string) =>
     ({ cash: 'Espèces', card: 'Carte', mobile_money: 'Mobile Money' }[method] ?? method);
-
-const openTicketPdf = () => {
-    window.open(props.ticketPdfUrl, '_blank', 'noopener');
-};
 
 const qtyByLine = reactive<Record<string, number>>(
     Object.fromEntries(
@@ -54,7 +57,7 @@ const submitReturn = () => {
 </script>
 
 <template>
-    <Head :title="`Facture ${sale.number}`" />
+    <Head :title="`Ticket ${sale.number}`" />
 
     <AuthenticatedLayout>
         <template #header>
@@ -69,41 +72,29 @@ const submitReturn = () => {
                         </span>
                     </p>
                 </div>
-                <div class="flex flex-wrap gap-2">
+                <div class="flex flex-wrap gap-2 mp-no-print">
                     <a :href="`${ticketPdfUrl}?download=1`" class="mp-btn mp-btn-ghost">Télécharger PDF</a>
-                    <button class="mp-btn mp-btn-primary" type="button" @click="openTicketPdf">
-                        Ouvrir / imprimer
+                    <button class="mp-btn mp-btn-primary" type="button" @click="printReceipt">
+                        Imprimer 58 mm
                     </button>
                     <Link :href="route('pos.index')" class="mp-btn mp-btn-ghost">Retour caisse</Link>
                 </div>
             </div>
         </template>
 
-        <section class="mx-auto max-w-4xl">
-            <div class="mb-3 flex items-end justify-between gap-3">
-                <div>
-                    <h2 class="mp-section-title">Aperçu facture</h2>
-                    <p class="mt-1 text-xs text-[color:var(--mp-muted)]">
-                        PDF généré côté serveur — sans en-tête navigateur ni URL.
-                    </p>
-                </div>
+        <section class="mp-ticket-stage mx-auto">
+            <div class="mp-ticket-paper">
+                <Receipt58mm :receipt="receipt" />
             </div>
-
-            <div
-                class="overflow-hidden border bg-white"
-                style="border-color: var(--mp-line); min-height: 72vh"
-            >
-                <iframe
-                    :src="ticketPdfUrl"
-                    title="Aperçu facture PDF"
-                    class="h-[72vh] w-full"
-                />
-            </div>
+            <p class="mp-ticket-hint mp-no-print">
+                Imprimante GOOJPRT PT-210 : dans la boîte d’impression, choisir le papier
+                <strong>58 mm</strong>, échelle <strong>100 %</strong>, sans en-têtes ni pieds de page.
+            </p>
         </section>
 
         <section
             v-if="sale.returns?.length"
-            class="mx-auto mt-10 max-w-4xl"
+            class="mp-no-print mx-auto mt-10 max-w-4xl"
         >
             <h2 class="mp-section-title">Retours déjà effectués</h2>
             <div v-for="ret in sale.returns" :key="ret.id" class="mp-row">
@@ -119,7 +110,7 @@ const submitReturn = () => {
 
         <section
             v-if="canRefund && returnableLines.length"
-            class="mx-auto mt-10 max-w-4xl space-y-4 border p-5"
+            class="mp-no-print mx-auto mt-10 max-w-4xl space-y-4 border p-5"
             style="border-color: var(--mp-line)"
         >
             <h2 class="mp-section-title">Retour / remboursement</h2>

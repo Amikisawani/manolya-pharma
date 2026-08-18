@@ -97,8 +97,9 @@ class PosController extends Controller
         ));
 
         return redirect()
-            ->route('sales.show', $sale)
-            ->with('success', "Vente {$sale->number} enregistrée.");
+            ->route('sales.show', ['sale' => $sale, 'print' => 1])
+            ->with('success', "Vente {$sale->number} enregistrée.")
+            ->with('print_receipt', true);
     }
 
     public function search(Request $request)
