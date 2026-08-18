@@ -125,6 +125,13 @@ body::-webkit-scrollbar-thumb:hover {
     background: var(--mp-accent-hover);
 }
 
+.mp-btn:disabled,
+.mp-btn[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .mp-btn-ghost {
     background: transparent;
     color: var(--mp-ink);

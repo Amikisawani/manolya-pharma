@@ -176,6 +176,7 @@ class ManolyaBootstrap
             'sale_payments',
             'sale_lines',
             'sales',
+            'cash_session_day_unlocks',
             'cash_register_sessions',
             'goods_receipt_lines',
             'goods_receipts',

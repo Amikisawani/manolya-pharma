@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pos;
 
 use App\Application\Sales\DTOs\CompleteSaleData;
+use App\Domain\Sales\Services\CashRegisterSessionService;
 use App\Domain\Sales\Services\CompleteSaleService;
 use App\Http\Controllers\Controller;
 use App\Models\CashRegisterSession;
@@ -16,7 +17,7 @@ use Inertia\Response;
 
 class PosController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, CashRegisterSessionService $sessions): Response
     {
         $this->authorize('create', Sale::class);
 
@@ -28,16 +29,20 @@ class PosController extends Controller
             ->first()
             ?? Warehouse::query()->first();
 
-        $openSession = CashRegisterSession::query()
-            ->with(['site:id,name', 'warehouse:id,name'])
-            ->where('opened_by', $user->id)
-            ->where('status', CashRegisterSession::STATUS_OPEN)
-            ->first();
+        $gate = $sessions->gateFor($user);
 
         return Inertia::render('Pos/Index', [
             'warehouse' => $warehouse,
             'currencyCode' => $user?->tenant?->default_currency ?? 'CDF',
-            'openSession' => $openSession,
+            'openSession' => $gate['session'],
+            'sessionGate' => [
+                'state' => $gate['state'],
+                'label' => $gate['label'],
+                'disabled' => $gate['disabled'],
+                'can_request_close' => $gate['can_request_close'],
+                'closure_pending' => $gate['closure_pending'],
+                'business_date' => $gate['business_date'],
+            ],
             'warehouses' => Warehouse::query()->orderBy('name')->get(['id', 'name', 'site_id']),
         ]);
     }
@@ -50,7 +55,10 @@ class PosController extends Controller
 
         $openSession = CashRegisterSession::query()
             ->where('opened_by', $user->id)
-            ->where('status', CashRegisterSession::STATUS_OPEN)
+            ->whereIn('status', [
+                CashRegisterSession::STATUS_OPEN,
+                CashRegisterSession::STATUS_CLOSURE_REQUESTED,
+            ])
             ->first();
 
         abort_unless($openSession, 422, 'Ouvrez une session de caisse avant d’encaisser.');

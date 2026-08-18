@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AppResetController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
+use App\Http\Controllers\Admin\CashSessionReportController as AdminCashSessionReportController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\UserAdminController;
 use App\Http\Controllers\Alert\AlertController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Pos\PosController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\SupplierController;
+use App\Http\Controllers\Reports\CashSessionReportController;
 use App\Http\Controllers\Sales\SaleController;
 use App\Http\Controllers\Sales\SaleReturnController;
 use App\Http\Controllers\Settings\SiteController;
@@ -55,6 +57,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware(['auth', 'super_admin'])->group(function () {
         Route::post('logout', [AdminAuthController::class, 'destroy'])->name('logout');
         Route::get('/', AdminDashboardController::class)->name('dashboard');
+        Route::get('cash-sessions', [AdminCashSessionReportController::class, 'index'])->name('cash-sessions.index');
+        Route::get('cash-sessions/{session}', [AdminCashSessionReportController::class, 'show'])->name('cash-sessions.show');
+        Route::post('cash-sessions/{session}/confirm', [AdminCashSessionReportController::class, 'confirm'])->name('cash-sessions.confirm');
+        Route::post('cash-sessions/{session}/reject', [AdminCashSessionReportController::class, 'reject'])->name('cash-sessions.reject');
+        Route::post('cash-sessions/unlock', [AdminCashSessionReportController::class, 'unlock'])->name('cash-sessions.unlock');
         Route::get('users', [UserAdminController::class, 'index'])->name('users.index');
         Route::post('users', [UserAdminController::class, 'store'])->name('users.store');
         Route::put('users/{user}', [UserAdminController::class, 'update'])->name('users.update');
@@ -87,6 +94,13 @@ Route::middleware(['auth', 'tenant', 'deny_super_admin'])->group(function () {
     Route::post('/pos/sessions', [CashRegisterSessionController::class, 'store'])->name('pos.sessions.store');
     Route::get('/pos/sessions/{session}', [CashRegisterSessionController::class, 'show'])->name('pos.sessions.show');
     Route::post('/pos/sessions/{session}/close', [CashRegisterSessionController::class, 'close'])->name('pos.sessions.close');
+
+    Route::get('/reports/cash-sessions', [CashSessionReportController::class, 'index'])->name('reports.cash-sessions.index');
+    Route::get('/reports/cash-sessions/{session}', [CashSessionReportController::class, 'show'])->name('reports.cash-sessions.show');
+    Route::post('/reports/cash-sessions/{session}/confirm', [CashSessionReportController::class, 'confirm'])->name('reports.cash-sessions.confirm');
+    Route::post('/reports/cash-sessions/{session}/reject', [CashSessionReportController::class, 'reject'])->name('reports.cash-sessions.reject');
+    Route::post('/reports/cash-sessions/unlock', [CashSessionReportController::class, 'unlock'])->name('reports.cash-sessions.unlock');
+
     Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
     Route::get('/sales/export', [SaleController::class, 'export'])->name('sales.export');
     Route::get('/sales/{sale}/ticket.pdf', [SaleController::class, 'ticket'])->name('sales.ticket');

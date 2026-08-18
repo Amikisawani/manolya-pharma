@@ -8,6 +8,7 @@ const props = defineProps<{
     sales: Array<Record<string, any>>;
     returns: Array<Record<string, any>>;
     summary: Record<string, number>;
+    canRequestClose?: boolean;
 }>();
 
 const form = useForm({
@@ -16,6 +17,9 @@ const form = useForm({
 });
 
 const close = () => form.post(route('pos.sessions.close', props.session.id));
+
+const statusLabel = (status: string) =>
+    ({ open: 'Ouverte', closure_requested: 'Fermeture demandée', closed: 'Fermée' }[status] ?? status);
 </script>
 
 <template>
@@ -29,7 +33,15 @@ const close = () => form.post(route('pos.sessions.close', props.session.id));
                     <h1 class="mp-display mt-2 text-4xl">{{ session.number }}</h1>
                     <p class="mt-2 text-sm text-[color:var(--mp-muted)]">
                         {{ session.site?.name }} ·
-                        <span class="mp-badge" :class="session.status === 'open' ? 'mp-badge-ok' : ''">{{ session.status }}</span>
+                        <span
+                            class="mp-badge"
+                            :class="{
+                                'mp-badge-ok': session.status === 'open',
+                                'mp-badge-warn': session.status === 'closure_requested',
+                            }"
+                        >
+                            {{ statusLabel(session.status) }}
+                        </span>
                     </p>
                 </div>
                 <Link :href="route('pos.index')" class="mp-btn mp-btn-primary">Caisse</Link>
@@ -71,21 +83,49 @@ const close = () => form.post(route('pos.sessions.close', props.session.id));
         </section>
 
         <form
-            v-if="session.status === 'open'"
+            v-if="canRequestClose && session.status === 'open'"
             class="mt-10 max-w-md space-y-3 border p-5"
             style="border-color: var(--mp-line)"
             @submit.prevent="close"
         >
-            <h2 class="mp-section-title">Clôturer la session</h2>
+            <h2 class="mp-section-title">Demander la fermeture</h2>
+            <p class="text-sm text-[color:var(--mp-muted)]">
+                La clôture sera confirmée par le propriétaire ou l’admin. La caisse reste utilisable en attendant.
+            </p>
             <div>
                 <label class="mp-metric-label">Espèces comptées (Fc)</label>
                 <input v-model.number="form.closing_counted" type="number" min="0" step="1" class="mp-input mt-1" required />
             </div>
             <textarea v-model="form.closing_notes" class="mp-input" rows="2" placeholder="Notes de clôture / écart" />
-            <button class="mp-btn mp-btn-primary w-full" :disabled="form.processing">Clôturer</button>
+            <button class="mp-btn mp-btn-primary w-full" :disabled="form.processing">Demander la fermeture</button>
         </form>
 
-        <div v-else class="mt-10 border p-5" style="border-color: var(--mp-line)">
+        <div
+            v-else-if="session.status === 'closure_requested'"
+            class="mt-10 border p-5"
+            style="border-color: var(--mp-line)"
+        >
+            <h2 class="mp-section-title">Fermeture en attente</h2>
+            <p class="mt-2 text-sm text-[color:var(--mp-muted)]">
+                Demande envoyée. Le propriétaire ou l’admin doit confirmer pour verrouiller la caisse.
+            </p>
+            <div class="mt-4 grid gap-4 md:grid-cols-3">
+                <div>
+                    <div class="mp-metric-label">Compté (demandé)</div>
+                    <MoneyAmount class="mt-1" :amount="session.closing_counted" size="md" />
+                </div>
+                <div>
+                    <div class="mp-metric-label">Attendu</div>
+                    <MoneyAmount class="mt-1" :amount="session.expected_cash" size="md" />
+                </div>
+                <div>
+                    <div class="mp-metric-label">Écart</div>
+                    <MoneyAmount class="mt-1" :amount="session.variance" size="md" />
+                </div>
+            </div>
+        </div>
+
+        <div v-else-if="session.status === 'closed'" class="mt-10 border p-5" style="border-color: var(--mp-line)">
             <h2 class="mp-section-title">Résultat de clôture</h2>
             <div class="mt-4 grid gap-4 md:grid-cols-3">
                 <div>

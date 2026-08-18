@@ -17,6 +17,8 @@ class CashRegisterSession extends Model
 
     public const STATUS_OPEN = 'open';
 
+    public const STATUS_CLOSURE_REQUESTED = 'closure_requested';
+
     public const STATUS_CLOSED = 'closed';
 
     protected $fillable = [
@@ -25,7 +27,9 @@ class CashRegisterSession extends Model
         'warehouse_id',
         'opened_by',
         'closed_by',
+        'closure_requested_by',
         'number',
+        'business_date',
         'status',
         'opening_float',
         'closing_counted',
@@ -36,6 +40,7 @@ class CashRegisterSession extends Model
         'closing_notes',
         'opened_at',
         'closed_at',
+        'closure_requested_at',
     ];
 
     protected function casts(): array
@@ -47,6 +52,8 @@ class CashRegisterSession extends Model
             'variance' => 'decimal:2',
             'opened_at' => 'datetime',
             'closed_at' => 'datetime',
+            'closure_requested_at' => 'datetime',
+            'business_date' => 'date',
         ];
     }
 
@@ -75,6 +82,11 @@ class CashRegisterSession extends Model
         return $this->belongsTo(User::class, 'closed_by');
     }
 
+    public function closureRequester(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'closure_requested_by');
+    }
+
     public function sales(): HasMany
     {
         return $this->hasMany(Sale::class);
@@ -88,5 +100,20 @@ class CashRegisterSession extends Model
     public function isOpen(): bool
     {
         return $this->status === self::STATUS_OPEN;
+    }
+
+    public function isSellable(): bool
+    {
+        return in_array($this->status, [self::STATUS_OPEN, self::STATUS_CLOSURE_REQUESTED], true);
+    }
+
+    public function isClosureRequested(): bool
+    {
+        return $this->status === self::STATUS_CLOSURE_REQUESTED;
+    }
+
+    public function isClosed(): bool
+    {
+        return $this->status === self::STATUS_CLOSED;
     }
 }

@@ -36,6 +36,7 @@ const navAll: NavItem[] = [
     { label: 'Tableau de bord', route: 'dashboard', match: 'dashboard', permissions: ['dashboard.view'] },
     { label: 'Caisse', route: 'pos.index', match: 'pos.index|pos.store|pos.search', permissions: ['sales.pos'] },
     { label: 'Sessions', route: 'pos.sessions.index', match: 'pos.sessions.*', permissions: ['sales.pos', 'sales.view'] },
+    { label: 'Rapport caisse', route: 'reports.cash-sessions.index', match: 'reports.cash-sessions.*', permissions: ['cash_sessions.report'] },
     { label: 'Ventes', route: 'sales.index', match: 'sales.*', permissions: ['sales.view'] },
     { label: 'Catalogue', route: 'catalog.products.index', match: 'catalog.*', permissions: ['products.view'] },
     { label: 'Stock', route: 'stock.batches.index', match: 'stock.batches.*', permissions: ['batches.view'] },

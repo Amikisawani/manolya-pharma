@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Application\Sales\DTOs\CompleteSaleData;
+use App\Domain\Reporting\Services\CashSessionClosePdfGenerator;
+use App\Domain\Reporting\Services\CashSessionCloseReportBuilder;
 use App\Domain\Sales\Services\CashRegisterSessionService;
 use App\Domain\Sales\Services\CompleteSaleService;
 use App\Jobs\SendCashSessionClosedReportJob;
@@ -74,11 +76,20 @@ class CashSessionCloseReportTest extends TestCase
             ->assertRedirect(route('pos.sessions.show', $session));
 
         $session->refresh();
+        $this->assertSame(CashRegisterSession::STATUS_CLOSURE_REQUESTED, $session->status);
+
+        $this->actingAs($owner)
+            ->post(route('reports.cash-sessions.confirm', $session), [
+                'closing_counted' => $expected,
+            ])
+            ->assertRedirect();
+
+        $session->refresh();
         $this->assertSame(CashRegisterSession::STATUS_CLOSED, $session->status);
 
         (new SendCashSessionClosedReportJob((string) $session->id))->handle(
-            app(\App\Domain\Reporting\Services\CashSessionCloseReportBuilder::class),
-            app(\App\Domain\Reporting\Services\CashSessionClosePdfGenerator::class),
+            app(CashSessionCloseReportBuilder::class),
+            app(CashSessionClosePdfGenerator::class),
         );
 
         Notification::assertSentTo($owner, CashSessionClosedMail::class);

@@ -28,6 +28,13 @@ const flashError = computed(() => (page.props as { flash?: { error?: string } })
                     Tableau de bord
                 </Link>
                 <Link
+                    :href="route('admin.cash-sessions.index')"
+                    class="block px-3 py-2"
+                    :class="route().current('admin.cash-sessions.*') ? 'bg-[#1c2923] text-[#e8f5ef]' : 'text-[#9aaba2] hover:bg-[#161e1a]'"
+                >
+                    Rapport caisse
+                </Link>
+                <Link
                     :href="route('admin.users.index')"
                     class="block px-3 py-2"
                     :class="route().current('admin.users.*') ? 'bg-[#1c2923] text-[#e8f5ef]' : 'text-[#9aaba2] hover:bg-[#161e1a]'"

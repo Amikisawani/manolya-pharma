@@ -23,6 +23,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'stock_counts.view', 'stock_counts.create', 'stock_counts.count', 'stock_counts.validate',
             'expenses.view', 'expenses.create', 'expenses.update',
             'finance.reports.view',
+            'cash_sessions.report', 'cash_sessions.approve',
             'documents.view', 'documents.upload', 'documents.delete',
             'alerts.view', 'alerts.ack',
             'audit.view', 'audit.export',
@@ -56,6 +57,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'alerts.view', 'alerts.ack',
             'audit.view',
             'reports.daily.view', 'reports.monthly.view',
+            'cash_sessions.report', 'cash_sessions.approve',
         ]);
         Role::findOrCreate('stock_manager')->syncPermissions([
             'dashboard.view',
@@ -82,6 +84,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'documents.view', 'documents.upload',
             'audit.view',
             'reports.daily.view', 'reports.monthly.view',
+            'cash_sessions.report',
         ]);
         Role::findOrCreate('auditor')->syncPermissions([
             'dashboard.view',
@@ -98,6 +101,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'audit.view', 'audit.export',
             'users.view',
             'reports.daily.view', 'reports.monthly.view',
+            'cash_sessions.report',
         ]);
     }
 }

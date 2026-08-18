@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Reporting\Services\CashSessionReportQuery;
 use App\Models\Batch;
+use App\Models\CashRegisterSession;
 use App\Models\Category;
 use App\Models\Expense;
 use App\Models\Product;
@@ -14,7 +16,7 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, CashSessionReportQuery $sessionReports): Response
     {
         $todayStart = now()->startOfDay();
         $monthStart = now()->startOfMonth();
@@ -104,6 +106,20 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
+        $pendingClosures = [];
+        $canReviewSessions = $request->user()?->canReviewCashSessions() ?? false;
+        if ($canReviewSessions) {
+            $pendingClosures = CashRegisterSession::query()
+                ->with(['opener:id,name', 'site:id,name', 'tenant:id,timezone'])
+                ->where('status', CashRegisterSession::STATUS_CLOSURE_REQUESTED)
+                ->orderByDesc('closure_requested_at')
+                ->limit(8)
+                ->get()
+                ->map(fn (CashRegisterSession $session) => $sessionReports->presentRow($session))
+                ->values()
+                ->all();
+        }
+
         return Inertia::render('Dashboard/Index', [
             'kpis' => [
                 'ca_today' => (string) ($salesToday->ca ?? '0'),
@@ -120,6 +136,8 @@ class DashboardController extends Controller
             'criticalProducts' => $criticalProducts,
             'topProductsToday' => $topProductsToday,
             'topCategories' => $topCategories,
+            'pendingClosures' => $pendingClosures,
+            'canReviewSessions' => $canReviewSessions,
             'chartPlaceholder' => [
                 'labels' => collect(range(6, 0))->map(fn (int $d) => now()->subDays($d)->format('d/m'))->values(),
                 'series' => collect(range(6, 0))->map(function (int $d) {

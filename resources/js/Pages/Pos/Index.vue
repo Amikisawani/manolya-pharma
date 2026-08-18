@@ -8,6 +8,14 @@ const props = defineProps<{
     warehouse: { id: string; name: string } | null;
     currencyCode: string;
     openSession: Record<string, any> | null;
+    sessionGate: {
+        state: 'open' | 'continue' | 'closed';
+        label: string;
+        disabled: boolean;
+        can_request_close: boolean;
+        closure_pending: boolean;
+        business_date: string;
+    };
     warehouses: Array<{ id: string; name: string; site_id: string }>;
 }>();
 
@@ -154,17 +162,24 @@ const due = computed(() => Math.max(subtotal.value - Number(form.discount_total)
                     <p class="mt-2 text-sm text-[color:var(--mp-muted)]">
                         Entrepôt : {{ warehouse?.name ?? 'Non défini' }}
                         <span v-if="openSession"> · Session {{ openSession.number }}</span>
+                        <span v-if="sessionGate.closure_pending"> · fermeture en attente de confirmation</span>
                     </p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <Link :href="route('pos.sessions.index')" class="mp-btn mp-btn-ghost">Sessions</Link>
                     <Link
-                        v-if="openSession"
+                        v-if="openSession && sessionGate.can_request_close"
                         :href="route('pos.sessions.show', openSession.id)"
                         class="mp-btn mp-btn-primary"
                     >
-                        Clôturer
+                        Demander la fermeture
                     </Link>
+                    <span
+                        v-else-if="sessionGate.closure_pending"
+                        class="mp-btn mp-btn-ghost"
+                    >
+                        Fermeture en attente
+                    </span>
                 </div>
             </div>
         </template>
@@ -178,7 +193,20 @@ const due = computed(() => Math.max(subtotal.value - Number(form.discount_total)
         </div>
 
         <div
-            v-if="!sessionOpen"
+            v-if="sessionGate.state === 'closed'"
+            class="mx-auto max-w-md space-y-4 border p-6"
+            style="border-color: var(--mp-line); background: rgba(255,252,247,0.8)"
+        >
+            <h2 class="mp-section-title">Caisse fermée</h2>
+            <p class="text-sm text-[color:var(--mp-muted)]">
+                La session du jour est clôturée. Le bouton se réactive à minuit, ou si le propriétaire / l’admin
+                autorise une nouvelle ouverture.
+            </p>
+            <button class="mp-btn mp-btn-primary w-full" type="button" disabled>Fermé</button>
+        </div>
+
+        <div
+            v-else-if="!sessionOpen"
             class="mx-auto max-w-md space-y-4 border p-6"
             style="border-color: var(--mp-line); background: rgba(255,252,247,0.8)"
         >

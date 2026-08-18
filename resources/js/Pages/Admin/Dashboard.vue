@@ -8,9 +8,11 @@ defineProps<{
         users: number;
         products: number;
         sales: number;
+        pending_closures?: number;
     };
     tenant: { id: string; name: string } | null;
     admin: { name: string; email: string };
+    pendingClosures?: Array<Record<string, any>>;
 }>();
 </script>
 
@@ -41,9 +43,40 @@ defineProps<{
                 <div class="text-xs uppercase tracking-[0.16em]" style="color: #7a857e">Ventes</div>
                 <div class="mt-2 text-3xl font-semibold">{{ stats.sales }}</div>
             </div>
+            <div class="border p-5" style="border-color: #24302a">
+                <div class="text-xs uppercase tracking-[0.16em]" style="color: #7a857e">Fermetures à confirmer</div>
+                <div class="mt-2 text-3xl font-semibold">{{ stats.pending_closures ?? pendingClosures?.length ?? 0 }}</div>
+            </div>
         </div>
 
+        <section v-if="pendingClosures?.length" class="mt-10">
+            <h2 class="text-sm font-semibold uppercase tracking-[0.14em]" style="color: #7a857e">Demandes de clôture</h2>
+            <div
+                v-for="session in pendingClosures"
+                :key="session.id"
+                class="mt-3 flex items-center justify-between border-t py-3"
+                style="border-color: #24302a"
+            >
+                <div>
+                    <div>{{ session.number }}</div>
+                    <div class="text-xs" style="color: #9aaba2">
+                        {{ session.opener_name }} · {{ session.business_date }}
+                    </div>
+                </div>
+                <Link :href="route('admin.cash-sessions.show', session.id)" class="text-sm" style="color: #a8d5c0">
+                    Voir / confirmer
+                </Link>
+            </div>
+        </section>
+
         <div class="mt-10 flex flex-wrap gap-3">
+            <Link
+                :href="route('admin.cash-sessions.index')"
+                class="px-4 py-2.5 text-sm font-semibold"
+                style="background: #1f6b4a; color: #f7f4ef"
+            >
+                Rapport caisse
+            </Link>
             <Link
                 :href="route('admin.users.index')"
                 class="px-4 py-2.5 text-sm font-semibold"

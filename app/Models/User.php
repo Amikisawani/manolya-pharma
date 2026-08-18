@@ -94,6 +94,20 @@ class User extends Authenticatable
         return $this->tenant_id === null && $this->hasRole('super_admin');
     }
 
+    public function canReviewCashSessions(): bool
+    {
+        return $this->isSuperAdmin()
+            || $this->hasAnyRole(['owner', 'pharmacist'])
+            || $this->can('cash_sessions.report');
+    }
+
+    public function canApproveCashSessions(): bool
+    {
+        return $this->isSuperAdmin()
+            || $this->hasAnyRole(['owner', 'pharmacist'])
+            || $this->can('cash_sessions.approve');
+    }
+
     public function routeNotificationForSms(): ?string
     {
         return filled($this->phone) ? (string) $this->phone : null;

@@ -10,6 +10,8 @@ const props = defineProps<{
     criticalProducts: Array<Record<string, unknown>>;
     topProductsToday: Array<Record<string, unknown>>;
     topCategories: Array<Record<string, unknown>>;
+    pendingClosures?: Array<Record<string, any>>;
+    canReviewSessions?: boolean;
     chartPlaceholder: { labels: string[]; series: number[] };
 }>();
 
@@ -76,7 +78,16 @@ watch(() => props.chartPlaceholder, renderChart, { deep: true });
                         L’essentiel de votre officine, en un regard.
                     </p>
                 </div>
-                <Link :href="route('pos.index')" class="mp-btn mp-btn-primary">Nouvelle vente</Link>
+                <div class="flex flex-wrap gap-2">
+                    <Link
+                        v-if="canReviewSessions"
+                        :href="route('reports.cash-sessions.index')"
+                        class="mp-btn mp-btn-ghost"
+                    >
+                        Rapport caisse
+                    </Link>
+                    <Link :href="route('pos.index')" class="mp-btn mp-btn-primary">Nouvelle vente</Link>
+                </div>
             </div>
         </template>
 
@@ -117,6 +128,24 @@ watch(() => props.chartPlaceholder, renderChart, { deep: true });
                     {{ kpis.expired_batches }}
                 </div>
                 <div class="mp-money-fx">Expire ≤ 30 j : {{ kpis.expiring_soon }}</div>
+            </div>
+        </section>
+
+        <section v-if="canReviewSessions && pendingClosures?.length" class="mt-10">
+            <h2 class="mp-section-title">Fermetures de caisse à confirmer</h2>
+            <div v-for="session in pendingClosures" :key="session.id" class="mp-row">
+                <div>
+                    <div class="font-medium">{{ session.number }}</div>
+                    <div class="text-xs text-[color:var(--mp-muted)]">
+                        {{ session.opener_name }} · {{ session.business_date }} · {{ session.opened_at }}
+                    </div>
+                </div>
+                <Link
+                    :href="route('reports.cash-sessions.show', session.id)"
+                    class="mp-btn mp-btn-primary"
+                >
+                    Voir / confirmer
+                </Link>
             </div>
         </section>
 

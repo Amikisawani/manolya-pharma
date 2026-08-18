@@ -4,37 +4,40 @@ namespace App\Http\Controllers\Pos;
 
 use App\Domain\Sales\Services\CashRegisterSessionService;
 use App\Http\Controllers\Controller;
-use App\Jobs\SendCashSessionClosedReportJob;
 use App\Models\CashRegisterSession;
 use App\Models\Sale;
 use App\Models\SaleReturn;
 use App\Models\Warehouse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 
 class CashRegisterSessionController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, CashRegisterSessionService $service): Response
     {
         abort_unless($request->user()?->can('sales.pos') || $request->user()?->can('sales.view'), 403);
+
+        $gate = $service->gateFor($request->user());
 
         $sessions = CashRegisterSession::query()
             ->with(['opener:id,name', 'closer:id,name', 'site:id,name'])
             ->orderByDesc('opened_at')
             ->paginate(20);
 
-        $openSession = CashRegisterSession::query()
-            ->with(['site:id,name', 'warehouse:id,name'])
-            ->where('opened_by', $request->user()->id)
-            ->where('status', CashRegisterSession::STATUS_OPEN)
-            ->first();
-
         return Inertia::render('Pos/CashSessions/Index', [
             'sessions' => $sessions,
-            'openSession' => $openSession,
+            'openSession' => $gate['session'],
+            'sessionGate' => [
+                'state' => $gate['state'],
+                'label' => $gate['label'],
+                'disabled' => $gate['disabled'],
+                'can_request_close' => $gate['can_request_close'],
+                'closure_pending' => $gate['closure_pending'],
+                'business_date' => $gate['business_date'],
+            ],
             'warehouses' => Warehouse::query()->orderBy('name')->get(['id', 'name', 'site_id']),
         ]);
     }
@@ -54,15 +57,19 @@ class CashRegisterSessionController extends Controller
             ? Warehouse::query()->find($data['warehouse_id'])
             : Warehouse::query()->where('is_default', true)->first();
 
-        $service->open([
-            'tenant_id' => (string) $user->tenant_id,
-            'site_id' => (string) ($user->site_id ?? $warehouse?->site_id),
-            'warehouse_id' => $warehouse?->id,
-            'opened_by' => (string) $user->id,
-            'opening_float' => $data['opening_float'],
-            'currency_code' => $user->tenant?->default_currency ?? 'CDF',
-            'opening_notes' => $data['opening_notes'] ?? null,
-        ]);
+        try {
+            $service->open([
+                'tenant_id' => (string) $user->tenant_id,
+                'site_id' => (string) ($user->site_id ?? $warehouse?->site_id),
+                'warehouse_id' => $warehouse?->id,
+                'opened_by' => (string) $user->id,
+                'opening_float' => $data['opening_float'],
+                'currency_code' => $user->tenant?->default_currency ?? 'CDF',
+                'opening_notes' => $data['opening_notes'] ?? null,
+            ]);
+        } catch (RuntimeException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
 
         return redirect()->route('pos.index')->with('success', 'Session de caisse ouverte.');
     }
@@ -93,6 +100,8 @@ class CashRegisterSessionController extends Controller
             'session' => $session,
             'sales' => $sales,
             'returns' => $returns,
+            'canRequestClose' => $session->isOpen()
+                && ($session->opened_by === $request->user()->id || $request->user()?->canApproveCashSessions()),
             'summary' => [
                 'sales_count' => $sales->count(),
                 'returns_count' => $returns->count(),
@@ -111,7 +120,7 @@ class CashRegisterSessionController extends Controller
         abort_unless($request->user()?->can('sales.pos'), 403);
         abort_unless(
             $session->opened_by === $request->user()->id
-            || $request->user()->hasAnyRole(['owner', 'pharmacist', 'super_admin']),
+            || $request->user()->canApproveCashSessions(),
             403
         );
 
@@ -120,18 +129,18 @@ class CashRegisterSessionController extends Controller
             'closing_notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $service->close($session, [
-            'closed_by' => (string) $request->user()->id,
-            'closing_counted' => $data['closing_counted'],
-            'closing_notes' => $data['closing_notes'] ?? null,
-        ]);
-
-        DB::afterCommit(function () use ($session): void {
-            SendCashSessionClosedReportJob::dispatch((string) $session->id);
-        });
+        try {
+            $service->requestClose($session, [
+                'requested_by' => (string) $request->user()->id,
+                'closing_counted' => $data['closing_counted'],
+                'closing_notes' => $data['closing_notes'] ?? null,
+            ]);
+        } catch (RuntimeException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
 
         return redirect()
             ->route('pos.sessions.show', $session)
-            ->with('success', 'Session de caisse clôturée — rapport envoyé aux propriétaires.');
+            ->with('success', 'Demande de fermeture envoyée au propriétaire / admin pour confirmation.');
     }
 }
