@@ -93,8 +93,22 @@ class SaleController extends Controller
                 ->where('status', CashRegisterSession::STATUS_OPEN)
                 ->exists(),
             'ticketPdfUrl' => route('sales.ticket', $sale),
+            'receiptPrintUrl' => route('sales.receipt', $sale, absolute: true)
+                .($request->boolean('reprint') ? '?reprint=1' : ''),
             'receipt' => $receipts->fromSale($sale, $request->boolean('reprint'))->toArray(),
             'printOnLoad' => $printOnLoad,
+        ]);
+    }
+
+    public function receipt(Request $request, Sale $sale, ThermalReceiptBuilder $receipts): HttpResponse
+    {
+        $this->authorize('view', $sale);
+
+        return response()->view('sales.receipt-58mm', [
+            'receipt' => $receipts->fromSale($sale, $request->boolean('reprint')),
+        ], 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Cache-Control' => 'private, no-store',
         ]);
     }
 

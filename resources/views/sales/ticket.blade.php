@@ -4,30 +4,30 @@
     <meta charset="utf-8">
     <title>Ticket {{ $ticket['number'] }}</title>
     <style>
-        @page { margin: 4mm 3mm; }
+        @page { margin: 2mm 1.8mm; }
         body {
             font-family: DejaVu Sans, sans-serif;
-            font-size: 11pt;
+            font-size: 12pt;
             color: #111;
             margin: 0;
-            width: 52mm;
+            width: 50mm;
         }
-        h1 { font-size: 14pt; margin: 0; text-align: center; text-transform: uppercase; }
-        .pharmacy { font-size: 11pt; text-align: center; font-weight: bold; margin-top: 2mm; }
-        .meta { font-size: 9.5pt; text-align: center; margin-top: 1mm; }
-        .rule { border: 0; border-top: 1px dashed #111; margin: 3mm 0; }
-        .kv { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+        h1 { font-size: 15pt; margin: 0; text-align: center; text-transform: uppercase; }
+        .pharmacy { font-size: 12pt; text-align: center; font-weight: bold; margin-top: 2mm; }
+        .meta { font-size: 10.5pt; text-align: center; margin-top: 1mm; }
+        .rule { border: 0; border-top: 1.4px dashed #111; margin: 2.6mm 0; }
+        .kv { width: 100%; border-collapse: collapse; font-size: 10.5pt; }
         .kv td { padding: 0.6mm 0; vertical-align: top; }
-        .kv td.k { font-weight: bold; width: 38%; }
+        .kv td.k { font-weight: bold; width: 36%; }
         .kv td.v { text-align: right; }
         .line { margin-bottom: 2.2mm; }
-        .line-name { font-size: 10.5pt; font-weight: bold; }
-        .line-qty { font-size: 10pt; }
+        .line-name { font-size: 12pt; font-weight: bold; }
+        .line-qty { font-size: 11pt; }
         .right { text-align: right; }
-        .row { width: 100%; border-collapse: collapse; font-size: 10pt; }
+        .row { width: 100%; border-collapse: collapse; font-size: 11pt; }
         .row td { padding: 0.7mm 0; }
-        .total td { font-size: 13pt; font-weight: bold; padding-top: 2mm; }
-        .foot { text-align: center; font-size: 9.5pt; margin-top: 2mm; }
+        .total td { font-size: 14pt; font-weight: bold; padding-top: 2mm; }
+        .foot { text-align: center; font-size: 10.5pt; margin-top: 2mm; }
     </style>
 </head>
 <body>

@@ -13,11 +13,12 @@ const props = defineProps<{
     canRefund?: boolean;
     hasOpenSession?: boolean;
     ticketPdfUrl: string;
+    receiptPrintUrl: string;
     receipt: ThermalReceiptPayload;
     printOnLoad?: boolean;
 }>();
 
-const { printReceipt } = useThermalPrint(Boolean(props.printOnLoad));
+const { printReceipt } = useThermalPrint(props.receiptPrintUrl, Boolean(props.printOnLoad));
 
 const methodLabel = (method: string) =>
     ({ cash: 'Espèces', card: 'Carte', mobile_money: 'Mobile Money' }[method] ?? method);
@@ -87,8 +88,9 @@ const submitReturn = () => {
                 <Receipt58mm :receipt="receipt" />
             </div>
             <p class="mp-ticket-hint mp-no-print">
-                Imprimante GOOJPRT PT-210 : dans la boîte d’impression, choisir le papier
-                <strong>58 mm</strong>, échelle <strong>100 %</strong>, sans en-têtes ni pieds de page.
+                GOOJPRT PT-210 : imprimante <strong>PT-210 / POS-58</strong>, papier
+                <strong>58 mm rouleau</strong> (pas 58×40 mm), échelle <strong>100 %</strong>,
+                sans « Ajuster à la page », sans en-têtes ni pieds de page.
             </p>
         </section>
 

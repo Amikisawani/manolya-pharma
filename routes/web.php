@@ -21,6 +21,7 @@ use App\Http\Controllers\Purchasing\PurchaseOrderController;
 use App\Http\Controllers\Purchasing\SupplierController;
 use App\Http\Controllers\Sales\SaleController;
 use App\Http\Controllers\Sales\SaleReturnController;
+use App\Http\Controllers\Settings\SiteController;
 use App\Http\Controllers\Setup\SetupController;
 use App\Http\Controllers\Stock\BatchController;
 use App\Http\Controllers\Stock\StockAdjustmentController;
@@ -89,6 +90,7 @@ Route::middleware(['auth', 'tenant', 'deny_super_admin'])->group(function () {
     Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
     Route::get('/sales/export', [SaleController::class, 'export'])->name('sales.export');
     Route::get('/sales/{sale}/ticket.pdf', [SaleController::class, 'ticket'])->name('sales.ticket');
+    Route::get('/sales/{sale}/receipt', [SaleController::class, 'receipt'])->name('sales.receipt');
     Route::get('/sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
     Route::post('/sales/{sale}/returns', [SaleReturnController::class, 'store'])->name('sales.returns.store');
 
@@ -149,8 +151,8 @@ Route::middleware(['auth', 'tenant', 'deny_super_admin'])->group(function () {
     // Audit
     Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
 
-    Route::get('/settings/sites', [\App\Http\Controllers\Settings\SiteController::class, 'index'])->name('settings.sites.index');
-    Route::post('/settings/sites', [\App\Http\Controllers\Settings\SiteController::class, 'store'])->name('settings.sites.store');
+    Route::get('/settings/sites', [SiteController::class, 'index'])->name('settings.sites.index');
+    Route::post('/settings/sites', [SiteController::class, 'store'])->name('settings.sites.store');
 
     // Alertes
     Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
