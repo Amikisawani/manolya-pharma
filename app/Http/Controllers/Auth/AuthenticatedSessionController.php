@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Domain\Sales\Services\CashRegisterSessionService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\LoginHistory;
@@ -154,8 +155,11 @@ class AuthenticatedSessionController extends Controller
     /**
      * Destroy an authenticated session.
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request, CashRegisterSessionService $sessions): RedirectResponse
     {
+        if ($message = $sessions->logoutBlockMessage($request->user())) {
+            return back()->with('error', $message);
+        }
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

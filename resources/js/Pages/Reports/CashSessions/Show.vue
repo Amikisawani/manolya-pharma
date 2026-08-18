@@ -101,7 +101,9 @@ const unlock = () => unlockForm.post(route('reports.cash-sessions.unlock'));
             class="mt-10 max-w-md space-y-3 border p-5"
             style="border-color: var(--mp-line)"
         >
-            <h2 class="mp-section-title">Confirmer la fermeture</h2>
+            <h2 class="mp-section-title">
+                {{ session.opener_name }} demande confirmation de la fermeture
+            </h2>
             <p class="text-sm text-[color:var(--mp-muted)]">
                 Demandée par {{ session.requester_name ?? session.opener_name }}
                 <span v-if="session.closure_requested_at"> · {{ session.closure_requested_at }}</span>
@@ -113,12 +115,33 @@ const unlock = () => unlockForm.post(route('reports.cash-sessions.unlock'));
             <textarea v-model="confirmForm.closing_notes" class="mp-input" rows="2" placeholder="Notes" />
             <div class="flex flex-wrap gap-2">
                 <button class="mp-btn mp-btn-primary" type="button" :disabled="confirmForm.processing" @click="confirm">
-                    Confirmer
+                    Valider
                 </button>
                 <button class="mp-btn mp-btn-ghost" type="button" :disabled="confirmForm.processing" @click="reject">
-                    Refuser
+                    Rejeter
                 </button>
             </div>
+        </section>
+
+        <section
+            v-else-if="canApprove && session.status === 'open' && session.close_request_rejected"
+            class="mt-10 max-w-md space-y-3 border p-5"
+            style="border-color: var(--mp-line)"
+        >
+            <h2 class="mp-section-title">
+                {{ session.opener_name }} — session en cours (demande rejetée)
+            </h2>
+            <p class="text-sm text-[color:var(--mp-muted)]">
+                Le caissier ne peut plus redemander la fermeture. Clôturez la session vous-même.
+            </p>
+            <div>
+                <label class="mp-metric-label">Espèces comptées (Fc)</label>
+                <input v-model.number="confirmForm.closing_counted" type="number" min="0" step="1" class="mp-input mt-1" />
+            </div>
+            <textarea v-model="confirmForm.closing_notes" class="mp-input" rows="2" placeholder="Notes" />
+            <button class="mp-btn mp-btn-primary" type="button" :disabled="confirmForm.processing" @click="confirm">
+                Clôturer
+            </button>
         </section>
 
         <section
@@ -128,7 +151,7 @@ const unlock = () => unlockForm.post(route('reports.cash-sessions.unlock'));
         >
             <h2 class="mp-section-title">Réouvrir la caisse aujourd’hui</h2>
             <p class="text-sm text-[color:var(--mp-muted)]">
-                Sans cette action, le caissier reste sur « Fermé » jusqu’à minuit.
+                Sans cette action, le caissier reste sur « Fermé » jusqu’à 8h le lendemain.
             </p>
             <button class="mp-btn mp-btn-primary" type="button" :disabled="unlockForm.processing" @click="unlock">
                 Autoriser une nouvelle session

@@ -12,6 +12,9 @@ const props = defineProps<{
         disabled: boolean;
         can_request_close: boolean;
         closure_pending: boolean;
+        close_request_rejected?: boolean;
+        status_message?: string;
+        next_opening_label?: string | null;
         business_date: string;
     };
     warehouses: Array<{ id: string; name: string; site_id: string }>;
@@ -47,7 +50,7 @@ const statusLabel = (status: string) =>
             <div class="lg:col-span-4">
                 <div v-if="sessionGate.state === 'continue' && openSession" class="border p-5" style="border-color: var(--mp-line)">
                     <div class="mp-badge" :class="sessionGate.closure_pending ? 'mp-badge-warn' : 'mp-badge-ok'">
-                        {{ sessionGate.closure_pending ? 'Fermeture demandée' : 'Session ouverte' }}
+                        {{ sessionGate.status_message || (sessionGate.closure_pending ? 'Fermeture en attente' : 'Session en cours') }}
                     </div>
                     <div class="mt-3 font-semibold">{{ openSession.number }}</div>
                     <MoneyAmount class="mt-2" :amount="openSession.opening_float" size="md" />
@@ -62,6 +65,22 @@ const statusLabel = (status: string) =>
                     >
                         Demander la fermeture
                     </Link>
+                    <button
+                        v-else-if="sessionGate.closure_pending"
+                        class="mp-btn mp-btn-ghost mt-2 w-full"
+                        type="button"
+                        disabled
+                    >
+                        Fermeture en attente
+                    </button>
+                    <button
+                        v-else-if="sessionGate.close_request_rejected"
+                        class="mp-btn mp-btn-ghost mt-2 w-full"
+                        type="button"
+                        disabled
+                    >
+                        Demander la fermeture
+                    </button>
                 </div>
 
                 <div
@@ -71,7 +90,7 @@ const statusLabel = (status: string) =>
                 >
                     <div class="mp-badge">Fermée</div>
                     <p class="mt-3 text-sm text-[color:var(--mp-muted)]">
-                        Une seule session par jour. Réouverture à minuit, ou via le tableau de bord propriétaire / admin.
+                        {{ sessionGate.status_message || 'Session fermée.' }}
                     </p>
                     <button class="mp-btn mp-btn-primary mt-4 w-full" type="button" disabled>Fermé</button>
                 </div>

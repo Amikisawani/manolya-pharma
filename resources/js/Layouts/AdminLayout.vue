@@ -5,6 +5,9 @@ import { computed } from 'vue';
 const page = usePage();
 const flashSuccess = computed(() => (page.props as { flash?: { success?: string } }).flash?.success);
 const flashError = computed(() => (page.props as { flash?: { error?: string } }).flash?.error);
+const cashSessionDuty = computed(() => (page.props as {
+    cashSessionDuty?: { must_close?: boolean; count?: number; message?: string | null };
+}).cashSessionDuty ?? { must_close: false, count: 0, message: null });
 </script>
 
 <template>
@@ -50,9 +53,26 @@ const flashError = computed(() => (page.props as { flash?: { error?: string } })
                 </Link>
             </nav>
             <div class="border-t px-5 py-4 text-xs" style="border-color: #24302a; color: #7a857e">
-                <Link :href="route('admin.logout')" method="post" as="button" class="hover:text-white">
+                <p v-if="cashSessionDuty.must_close" class="mb-2" style="color: #f0c4c0">
+                    {{ cashSessionDuty.message }}
+                </p>
+                <Link
+                    v-if="!cashSessionDuty.must_close"
+                    :href="route('admin.logout')"
+                    method="post"
+                    as="button"
+                    class="hover:text-white"
+                >
                     Déconnexion
                 </Link>
+                <button
+                    v-else
+                    type="button"
+                    class="cursor-not-allowed opacity-50"
+                    disabled
+                >
+                    Déconnexion
+                </button>
             </div>
         </aside>
 
@@ -79,6 +99,13 @@ const flashError = computed(() => (page.props as { flash?: { error?: string } })
                     style="border-color: #b42318; color: #f0c4c0"
                 >
                     {{ flashError }}
+                </div>
+                <div
+                    v-if="cashSessionDuty.must_close"
+                    class="mb-6 border px-4 py-3 text-sm"
+                    style="border-color: #b42318; color: #f0c4c0"
+                >
+                    {{ cashSessionDuty.message }}
                 </div>
                 <slot />
             </main>

@@ -41,6 +41,7 @@ class CashRegisterSession extends Model
         'opened_at',
         'closed_at',
         'closure_requested_at',
+        'close_request_rejected_at',
     ];
 
     protected function casts(): array
@@ -53,6 +54,7 @@ class CashRegisterSession extends Model
             'opened_at' => 'datetime',
             'closed_at' => 'datetime',
             'closure_requested_at' => 'datetime',
+            'close_request_rejected_at' => 'datetime',
             'business_date' => 'date',
         ];
     }
@@ -115,5 +117,17 @@ class CashRegisterSession extends Model
     public function isClosed(): bool
     {
         return $this->status === self::STATUS_CLOSED;
+    }
+
+    public function closeRequestWasRejected(): bool
+    {
+        return $this->close_request_rejected_at !== null;
+    }
+
+    public function scopeRejectedOpen($query)
+    {
+        return $query
+            ->where('status', self::STATUS_OPEN)
+            ->whereNotNull('close_request_rejected_at');
     }
 }

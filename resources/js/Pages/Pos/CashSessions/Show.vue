@@ -40,7 +40,7 @@ const statusLabel = (status: string) =>
                                 'mp-badge-warn': session.status === 'closure_requested',
                             }"
                         >
-                            {{ statusLabel(session.status) }}
+                            {{ session.close_request_rejected_at ? 'Session en cours' : statusLabel(session.status) }}
                         </span>
                     </p>
                 </div>
@@ -107,7 +107,7 @@ const statusLabel = (status: string) =>
         >
             <h2 class="mp-section-title">Fermeture en attente</h2>
             <p class="mt-2 text-sm text-[color:var(--mp-muted)]">
-                Demande envoyée. Le propriétaire ou l’admin doit confirmer pour verrouiller la caisse.
+                Demande envoyée. Le propriétaire ou l’admin doit valider ou rejeter.
             </p>
             <div class="mt-4 grid gap-4 md:grid-cols-3">
                 <div>
@@ -123,6 +123,18 @@ const statusLabel = (status: string) =>
                     <MoneyAmount class="mt-1" :amount="session.variance" size="md" />
                 </div>
             </div>
+        </div>
+
+        <div
+            v-else-if="session.close_request_rejected_at && session.status === 'open'"
+            class="mt-10 border p-5"
+            style="border-color: var(--mp-line)"
+        >
+            <h2 class="mp-section-title">Session en cours</h2>
+            <p class="mt-2 text-sm text-[color:var(--mp-muted)]">
+                La demande de fermeture a été rejetée. Vous n’avez droit qu’à une seule demande :
+                seul le propriétaire ou l’admin peut clôturer cette session.
+            </p>
         </div>
 
         <div v-else-if="session.status === 'closed'" class="mt-10 border p-5" style="border-color: var(--mp-line)">

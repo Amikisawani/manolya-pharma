@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\Sales\Services\CashRegisterSessionService;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -74,8 +75,12 @@ class AuthController extends Controller
         return redirect()->route('admin.dashboard');
     }
 
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request, CashRegisterSessionService $sessions): RedirectResponse
     {
+        if ($message = $sessions->logoutBlockMessage($request->user())) {
+            return redirect()->route('admin.dashboard')->with('error', $message);
+        }
+
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

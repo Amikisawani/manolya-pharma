@@ -75,17 +75,37 @@ const unlock = () => unlockForm.post(route('admin.cash-sessions.unlock'));
             class="mt-10 max-w-md space-y-3 border p-5"
             style="border-color: #24302a"
         >
-            <h2 class="text-sm font-semibold">Confirmer la fermeture</h2>
+            <h2 class="text-sm font-semibold">
+                {{ session.opener_name }} demande confirmation de la fermeture
+            </h2>
             <input v-model.number="confirmForm.closing_counted" type="number" min="0" class="w-full border bg-transparent px-3 py-2 text-sm" style="border-color: #24302a; color: #e8f5ef" />
             <textarea v-model="confirmForm.closing_notes" rows="2" class="w-full border bg-transparent px-3 py-2 text-sm" style="border-color: #24302a; color: #e8f5ef" />
             <div class="flex gap-2">
                 <button class="px-4 py-2 text-sm font-semibold" style="background: #1f6b4a; color: #f7f4ef" type="button" @click="confirm">
-                    Confirmer
+                    Valider
                 </button>
-                <button class="border px-4 py-2 text-sm" style="border-color: #24302a" type="button" @click="reject">
-                    Refuser
+                <button class="border px-4 py-2 text-sm" style="border-color: #b42318; color: #f0c4c0" type="button" @click="reject">
+                    Rejeter
                 </button>
             </div>
+        </section>
+
+        <section
+            v-else-if="session.status === 'open' && session.close_request_rejected"
+            class="mt-10 max-w-md space-y-3 border p-5"
+            style="border-color: #24302a"
+        >
+            <h2 class="text-sm font-semibold">
+                {{ session.opener_name }} — session en cours (demande rejetée)
+            </h2>
+            <p class="text-sm" style="color: #f0c4c0">
+                Le caissier ne peut plus redemander la fermeture. Clôturez la session vous-même avant de vous déconnecter.
+            </p>
+            <input v-model.number="confirmForm.closing_counted" type="number" min="0" class="w-full border bg-transparent px-3 py-2 text-sm" style="border-color: #24302a; color: #e8f5ef" />
+            <textarea v-model="confirmForm.closing_notes" rows="2" class="w-full border bg-transparent px-3 py-2 text-sm" style="border-color: #24302a; color: #e8f5ef" />
+            <button class="px-4 py-2 text-sm font-semibold" style="background: #1f6b4a; color: #f7f4ef" type="button" @click="confirm">
+                Clôturer
+            </button>
         </section>
 
         <section v-if="session.status === 'closed'" class="mt-10 max-w-md border p-5" style="border-color: #24302a">

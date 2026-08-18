@@ -58,6 +58,9 @@ const userName = computed(() => auth.value.user?.name ?? '');
 const pharmacy = computed(() => auth.value.user?.tenant?.name ?? 'Manolya Pharma');
 const flashSuccess = computed(() => (page.props as { flash?: { success?: string } }).flash?.success);
 const flashError = computed(() => (page.props as { flash?: { error?: string } }).flash?.error);
+const cashSessionDuty = computed(() => (page.props as {
+    cashSessionDuty?: { must_close?: boolean; count?: number; message?: string | null };
+}).cashSessionDuty ?? { must_close: false, count: 0, message: null });
 
 const isActive = (pattern: string) => {
     try {
@@ -104,9 +107,26 @@ const isActive = (pattern: string) => {
 
             <div class="shrink-0 border-t px-5 py-4 text-sm" style="border-color: #24302a; color: var(--mp-sidebar-muted)">
                 <div class="text-[color:var(--mp-sidebar-active)]">{{ userName }}</div>
-                <Link :href="route('logout')" method="post" as="button" class="mt-2 text-xs hover:text-white">
+                <p v-if="cashSessionDuty.must_close" class="mt-2 text-xs" style="color: #f0c4c0">
+                    {{ cashSessionDuty.message }}
+                </p>
+                <Link
+                    v-if="!cashSessionDuty.must_close"
+                    :href="route('logout')"
+                    method="post"
+                    as="button"
+                    class="mt-2 text-xs hover:text-white"
+                >
                     Déconnexion
                 </Link>
+                <button
+                    v-else
+                    type="button"
+                    class="mt-2 cursor-not-allowed text-xs opacity-50"
+                    disabled
+                >
+                    Déconnexion
+                </button>
             </div>
         </aside>
 
@@ -171,6 +191,13 @@ const isActive = (pattern: string) => {
                     style="border-color: #f0c4c0; background: #fbebe9; color: var(--mp-danger)"
                 >
                     {{ flashError }}
+                </div>
+                <div
+                    v-if="cashSessionDuty.must_close"
+                    class="mb-5 border px-4 py-3 text-sm print:hidden"
+                    style="border-color: #f0c4c0; background: #fbebe9; color: var(--mp-danger)"
+                >
+                    {{ cashSessionDuty.message }}
                 </div>
                 <slot />
             </main>

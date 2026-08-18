@@ -30,14 +30,7 @@ class CashRegisterSessionController extends Controller
         return Inertia::render('Pos/CashSessions/Index', [
             'sessions' => $sessions,
             'openSession' => $gate['session'],
-            'sessionGate' => [
-                'state' => $gate['state'],
-                'label' => $gate['label'],
-                'disabled' => $gate['disabled'],
-                'can_request_close' => $gate['can_request_close'],
-                'closure_pending' => $gate['closure_pending'],
-                'business_date' => $gate['business_date'],
-            ],
+            'sessionGate' => CashRegisterSessionService::presentGate($gate),
             'warehouses' => Warehouse::query()->orderBy('name')->get(['id', 'name', 'site_id']),
         ]);
     }
@@ -101,6 +94,7 @@ class CashRegisterSessionController extends Controller
             'sales' => $sales,
             'returns' => $returns,
             'canRequestClose' => $session->isOpen()
+                && ! $session->closeRequestWasRejected()
                 && ($session->opened_by === $request->user()->id || $request->user()?->canApproveCashSessions()),
             'summary' => [
                 'sales_count' => $sales->count(),

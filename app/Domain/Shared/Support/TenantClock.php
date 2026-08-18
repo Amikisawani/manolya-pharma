@@ -24,6 +24,23 @@ final class TenantClock
         return self::now($tenant)->toDateString();
     }
 
+    public static function nextOpeningAt(?Tenant $tenant, string $businessDate): CarbonImmutable
+    {
+        return CarbonImmutable::parse($businessDate, self::timezone($tenant))
+            ->addDay()
+            ->setTime(8, 0);
+    }
+
+    public static function nextOpeningLabel(?Tenant $tenant, string $businessDate): string
+    {
+        return self::nextOpeningAt($tenant, $businessDate)->format('d/m/Y').' 8h';
+    }
+
+    public static function hasReachedNextOpening(?Tenant $tenant, string $businessDate): bool
+    {
+        return self::now($tenant)->greaterThanOrEqualTo(self::nextOpeningAt($tenant, $businessDate));
+    }
+
     public static function format(?\DateTimeInterface $value, ?Tenant $tenant, string $format = 'd/m/Y H:i'): ?string
     {
         if ($value === null) {

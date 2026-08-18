@@ -107,12 +107,23 @@ class DashboardController extends Controller
             ->get();
 
         $pendingClosures = [];
+        $rejectedClosures = [];
         $canReviewSessions = $request->user()?->canReviewCashSessions() ?? false;
+        $canApproveSessions = $request->user()?->canApproveCashSessions() ?? false;
         if ($canReviewSessions) {
             $pendingClosures = CashRegisterSession::query()
                 ->with(['opener:id,name', 'site:id,name', 'tenant:id,timezone'])
                 ->where('status', CashRegisterSession::STATUS_CLOSURE_REQUESTED)
                 ->orderByDesc('closure_requested_at')
+                ->limit(8)
+                ->get()
+                ->map(fn (CashRegisterSession $session) => $sessionReports->presentRow($session))
+                ->values()
+                ->all();
+            $rejectedClosures = CashRegisterSession::query()
+                ->with(['opener:id,name', 'site:id,name', 'tenant:id,timezone'])
+                ->rejectedOpen()
+                ->orderByDesc('close_request_rejected_at')
                 ->limit(8)
                 ->get()
                 ->map(fn (CashRegisterSession $session) => $sessionReports->presentRow($session))
@@ -137,7 +148,9 @@ class DashboardController extends Controller
             'topProductsToday' => $topProductsToday,
             'topCategories' => $topCategories,
             'pendingClosures' => $pendingClosures,
+            'rejectedClosures' => $rejectedClosures,
             'canReviewSessions' => $canReviewSessions,
+            'canApproveSessions' => $canApproveSessions,
             'chartPlaceholder' => [
                 'labels' => collect(range(6, 0))->map(fn (int $d) => now()->subDays($d)->format('d/m'))->values(),
                 'series' => collect(range(6, 0))->map(function (int $d) {

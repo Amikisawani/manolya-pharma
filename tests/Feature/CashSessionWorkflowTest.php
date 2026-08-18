@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Application\Sales\DTOs\CompleteSaleData;
 use App\Domain\Sales\Services\CashRegisterSessionService;
 use App\Domain\Sales\Services\CompleteSaleService;
+use App\Domain\Shared\Support\TenantClock;
 use App\Models\Alert;
 use App\Models\CashRegisterSession;
 use App\Models\Product;
@@ -102,6 +103,24 @@ class CashSessionWorkflowTest extends TestCase
 
         $session->refresh();
         $this->assertSame(CashRegisterSession::STATUS_CLOSURE_REQUESTED, $session->status);
+
+        $this->actingAs($cashier)
+            ->get(route('pos.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('sessionGate.closure_pending', true)
+                ->where('sessionGate.label', 'Fermeture en attente')
+                ->where('sessionGate.status_message', 'Fermeture en attente')
+                ->where('sessionGate.can_request_close', false)
+            );
+
+        $this->actingAs($owner)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('pendingClosures.0.opener_name', 'Caissier Test')
+                ->where('canApproveSessions', true)
+            );
         $this->assertTrue(
             Alert::query()->where('type', CashRegisterSessionService::ALERT_TYPE_CLOSE_REQUEST)->exists()
         );
@@ -120,6 +139,12 @@ class CashSessionWorkflowTest extends TestCase
         $session->refresh();
         $this->assertSame(CashRegisterSession::STATUS_CLOSED, $session->status);
 
+        $owner->loadMissing('tenant');
+        $nextOpening = TenantClock::nextOpeningLabel(
+            $owner->tenant,
+            optional($session->business_date)?->toDateString() ?? TenantClock::today($owner->tenant),
+        );
+
         $this->actingAs($cashier)
             ->get(route('pos.index'))
             ->assertOk()
@@ -127,6 +152,8 @@ class CashSessionWorkflowTest extends TestCase
                 ->where('sessionGate.state', 'closed')
                 ->where('sessionGate.label', 'Fermé')
                 ->where('sessionGate.disabled', true)
+                ->where('sessionGate.next_opening_label', $nextOpening)
+                ->where('sessionGate.status_message', 'Session fermée — prochaine ouverture '.$nextOpening)
             );
 
         $this->actingAs($cashier)
@@ -156,6 +183,164 @@ class CashSessionWorkflowTest extends TestCase
             ->assertRedirect(route('pos.index'));
 
         $this->assertSame(2, CashRegisterSession::query()->where('opened_by', $cashier->id)->count());
+    }
+
+    public function test_rejected_close_request_blocks_cashier_retry_and_admin_logout(): void
+    {
+        $this->seed();
+        Notification::fake();
+
+        $owner = User::query()->where('email', 'owner@manolya.test')->firstOrFail();
+        app()->instance('current_tenant_id', (string) $owner->tenant_id);
+        $cashier = $this->makeCashier($owner);
+        $warehouse = Warehouse::query()->where('tenant_id', $owner->tenant_id)->firstOrFail();
+
+        $this->actingAs($cashier)
+            ->post(route('pos.sessions.store'), [
+                'warehouse_id' => $warehouse->id,
+                'opening_float' => 10000,
+            ])
+            ->assertRedirect(route('pos.index'));
+
+        $session = CashRegisterSession::query()->where('opened_by', $cashier->id)->firstOrFail();
+
+        $this->actingAs($cashier)
+            ->post(route('pos.sessions.close', $session), [
+                'closing_counted' => 10000,
+            ])
+            ->assertRedirect(route('pos.sessions.show', $session));
+
+        $this->actingAs($owner)
+            ->post(route('reports.cash-sessions.reject', $session))
+            ->assertRedirect();
+
+        $session->refresh();
+        $this->assertSame(CashRegisterSession::STATUS_OPEN, $session->status);
+        $this->assertNotNull($session->close_request_rejected_at);
+
+        $this->actingAs($cashier)
+            ->get(route('pos.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('sessionGate.state', 'continue')
+                ->where('sessionGate.status_message', 'Session en cours')
+                ->where('sessionGate.close_request_rejected', true)
+                ->where('sessionGate.can_request_close', false)
+            );
+
+        $this->actingAs($cashier)
+            ->post(route('pos.sessions.close', $session), [
+                'closing_counted' => 10000,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->actingAs($owner)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('rejectedClosures.0.opener_name', 'Caissier Test')
+                ->where('cashSessionDuty.must_close', true)
+            );
+
+        $this->actingAs($owner)
+            ->from(route('dashboard'))
+            ->post(route('logout'))
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('error');
+        $this->assertAuthenticatedAs($owner);
+
+        $this->actingAs($cashier)
+            ->post(route('logout'))
+            ->assertRedirect('/');
+        $this->assertGuest();
+
+        $this->actingAs($owner)
+            ->post(route('reports.cash-sessions.confirm', $session))
+            ->assertRedirect();
+
+        $session->refresh();
+        $this->assertSame(CashRegisterSession::STATUS_CLOSED, $session->status);
+
+        $this->actingAs($owner)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('cashSessionDuty.must_close', false));
+
+        $this->actingAs($owner)
+            ->post(route('logout'))
+            ->assertRedirect('/');
+        $this->assertGuest();
+    }
+
+    public function test_super_admin_dashboard_validates_or_rejects_and_cannot_logout_after_reject(): void
+    {
+        $this->seed();
+        Notification::fake();
+
+        $owner = User::query()->where('email', 'owner@manolya.test')->firstOrFail();
+        app()->instance('current_tenant_id', (string) $owner->tenant_id);
+        $cashier = $this->makeCashier($owner);
+        $warehouse = Warehouse::query()->where('tenant_id', $owner->tenant_id)->firstOrFail();
+
+        $admin = User::query()->create([
+            'tenant_id' => null,
+            'site_id' => null,
+            'name' => 'Super Admin',
+            'email' => 'admin-caisse-logout@manolya.test',
+            'password' => Hash::make('password'),
+            'is_active' => true,
+            'email_verified_at' => now(),
+        ]);
+        $admin->assignRole('super_admin');
+
+        $this->actingAs($cashier)
+            ->post(route('pos.sessions.store'), [
+                'warehouse_id' => $warehouse->id,
+                'opening_float' => 10000,
+            ]);
+
+        $session = CashRegisterSession::query()->where('opened_by', $cashier->id)->firstOrFail();
+
+        $this->actingAs($cashier)
+            ->post(route('pos.sessions.close', $session), [
+                'closing_counted' => 10000,
+            ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Dashboard')
+                ->where('pendingClosures.0.opener_name', 'Caissier Test')
+            );
+
+        $this->actingAs($admin)
+            ->post(route('admin.cash-sessions.reject', $session))
+            ->assertRedirect();
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('rejectedClosures.0.opener_name', 'Caissier Test')
+                ->where('cashSessionDuty.must_close', true)
+            );
+
+        $this->actingAs($admin)
+            ->post(route('admin.logout'))
+            ->assertRedirect(route('admin.dashboard'))
+            ->assertSessionHas('error');
+        $this->assertAuthenticatedAs($admin);
+
+        $this->actingAs($admin)
+            ->post(route('admin.cash-sessions.confirm', $session))
+            ->assertRedirect();
+
+        $this->actingAs($admin)
+            ->post(route('admin.logout'))
+            ->assertRedirect(route('admin.login'));
+        $this->assertGuest();
     }
 
     public function test_super_admin_can_open_cash_session_report(): void

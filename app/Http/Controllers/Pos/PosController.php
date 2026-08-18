@@ -35,14 +35,7 @@ class PosController extends Controller
             'warehouse' => $warehouse,
             'currencyCode' => $user?->tenant?->default_currency ?? 'CDF',
             'openSession' => $gate['session'],
-            'sessionGate' => [
-                'state' => $gate['state'],
-                'label' => $gate['label'],
-                'disabled' => $gate['disabled'],
-                'can_request_close' => $gate['can_request_close'],
-                'closure_pending' => $gate['closure_pending'],
-                'business_date' => $gate['business_date'],
-            ],
+            'sessionGate' => CashRegisterSessionService::presentGate($gate),
             'warehouses' => Warehouse::query()->orderBy('name')->get(['id', 'name', 'site_id']),
         ]);
     }

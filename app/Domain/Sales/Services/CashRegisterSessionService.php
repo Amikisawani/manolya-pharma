@@ -55,20 +55,28 @@ final class CashRegisterSessionService
                 throw new RuntimeException('Une session de caisse est déjà ouverte pour cet utilisateur.');
             }
 
-            $closedToday = CashRegisterSession::query()
+            $latestClosed = CashRegisterSession::query()
                 ->where('opened_by', $payload['opened_by'])
-                ->whereDate('business_date', $today)
                 ->where('status', CashRegisterSession::STATUS_CLOSED)
+                ->orderByDesc('business_date')
+                ->orderByDesc('closed_at')
                 ->lockForUpdate()
-                ->exists();
+                ->first();
 
             $unlocked = CashSessionDayUnlock::query()
                 ->where('user_id', $payload['opened_by'])
                 ->whereDate('business_date', $today)
                 ->exists();
 
-            if ($closedToday && ! $unlocked) {
-                throw new RuntimeException('La session du jour est clôturée. Réouverture demain à minuit, ou par le propriétaire / l’admin.');
+            if ($latestClosed && ! $unlocked) {
+                $businessDate = optional($latestClosed->business_date)?->toDateString() ?? $today;
+                if (! TenantClock::hasReachedNextOpening($tenant, $businessDate)) {
+                    throw new RuntimeException(
+                        'La session est clôturée. Prochaine ouverture le '
+                        .TenantClock::nextOpeningLabel($tenant, $businessDate)
+                        .', ou via le propriétaire / l’admin.'
+                    );
+                }
             }
 
             $session = CashRegisterSession::query()->create([
@@ -108,6 +116,9 @@ final class CashRegisterSessionService
      *     disabled: bool,
      *     can_request_close: bool,
      *     closure_pending: bool,
+     *     close_request_rejected: bool,
+     *     status_message: string,
+     *     next_opening_label: string|null,
      *     business_date: string,
      *     session: CashRegisterSession|null
      * }
@@ -115,7 +126,8 @@ final class CashRegisterSessionService
     public function gateFor(User $user): array
     {
         $user->loadMissing('tenant');
-        $today = TenantClock::today($user->tenant);
+        $tenant = $user->tenant;
+        $today = TenantClock::today($tenant);
 
         $active = CashRegisterSession::query()
             ->with(['site:id,name', 'warehouse:id,name'])
@@ -128,39 +140,59 @@ final class CashRegisterSessionService
 
         if ($active) {
             $pending = $active->isClosureRequested();
+            $rejected = $active->closeRequestWasRejected();
+
+            $message = 'Session en cours';
+            $label = 'Continuer la session';
+            if ($pending) {
+                $message = 'Fermeture en attente';
+                $label = 'Fermeture en attente';
+            }
 
             return [
                 'state' => 'continue',
-                'label' => 'Continuer la session',
-                'disabled' => false,
-                'can_request_close' => $active->isOpen(),
+                'label' => $label,
+                'disabled' => $pending,
+                'can_request_close' => $active->isOpen() && ! $rejected,
                 'closure_pending' => $pending,
+                'close_request_rejected' => $rejected,
+                'status_message' => $message,
+                'next_opening_label' => null,
                 'business_date' => $today,
                 'session' => $active,
             ];
         }
 
-        $closedToday = CashRegisterSession::query()
+        $latestClosed = CashRegisterSession::query()
             ->where('opened_by', $user->id)
-            ->whereDate('business_date', $today)
             ->where('status', CashRegisterSession::STATUS_CLOSED)
-            ->exists();
+            ->orderByDesc('business_date')
+            ->orderByDesc('closed_at')
+            ->first();
 
         $unlocked = CashSessionDayUnlock::query()
             ->where('user_id', $user->id)
             ->whereDate('business_date', $today)
             ->exists();
 
-        if ($closedToday && ! $unlocked) {
-            return [
-                'state' => 'closed',
-                'label' => 'Fermé',
-                'disabled' => true,
-                'can_request_close' => false,
-                'closure_pending' => false,
-                'business_date' => $today,
-                'session' => null,
-            ];
+        if ($latestClosed && ! $unlocked) {
+            $businessDate = optional($latestClosed->business_date)?->toDateString() ?? $today;
+            if (! TenantClock::hasReachedNextOpening($tenant, $businessDate)) {
+                $nextLabel = TenantClock::nextOpeningLabel($tenant, $businessDate);
+
+                return [
+                    'state' => 'closed',
+                    'label' => 'Fermé',
+                    'disabled' => true,
+                    'can_request_close' => false,
+                    'closure_pending' => false,
+                    'close_request_rejected' => false,
+                    'status_message' => 'Session fermée — prochaine ouverture '.$nextLabel,
+                    'next_opening_label' => $nextLabel,
+                    'business_date' => $today,
+                    'session' => $latestClosed,
+                ];
+            }
         }
 
         return [
@@ -169,8 +201,30 @@ final class CashRegisterSessionService
             'disabled' => false,
             'can_request_close' => false,
             'closure_pending' => false,
+            'close_request_rejected' => false,
+            'status_message' => '',
+            'next_opening_label' => null,
             'business_date' => $today,
             'session' => null,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $gate
+     * @return array<string, mixed>
+     */
+    public static function presentGate(array $gate): array
+    {
+        return [
+            'state' => $gate['state'],
+            'label' => $gate['label'],
+            'disabled' => $gate['disabled'],
+            'can_request_close' => $gate['can_request_close'],
+            'closure_pending' => $gate['closure_pending'],
+            'close_request_rejected' => $gate['close_request_rejected'],
+            'status_message' => $gate['status_message'],
+            'next_opening_label' => $gate['next_opening_label'],
+            'business_date' => $gate['business_date'],
         ];
     }
 
@@ -196,6 +250,10 @@ final class CashRegisterSessionService
                         ? 'Une demande de fermeture est déjà en attente.'
                         : 'Cette session est déjà clôturée.'
                 );
+            }
+
+            if ($locked->closeRequestWasRejected()) {
+                throw new RuntimeException('Une seule demande de fermeture est autorisée. L’admin doit clôturer la session.');
             }
 
             $totals = $this->cashTotals($locked);
@@ -277,8 +335,7 @@ final class CashRegisterSessionService
 
             $locked->fill([
                 'status' => CashRegisterSession::STATUS_OPEN,
-                'closure_requested_by' => null,
-                'closure_requested_at' => null,
+                'close_request_rejected_at' => now(),
             ])->save();
 
             $this->ackCloseRequestAlerts($locked);
@@ -376,6 +433,26 @@ final class CashRegisterSessionService
 
             return $locked->fresh(['opener', 'closer', 'site']) ?? $locked;
         });
+    }
+
+    public function logoutBlockMessage(?User $user): ?string
+    {
+        if ($user === null || ! $user->canApproveCashSessions()) {
+            return null;
+        }
+
+        if ($user->isSuperAdmin() && ! app()->bound('current_tenant_id')) {
+            $tenant = Tenant::query()->orderBy('created_at')->first();
+            if ($tenant) {
+                app()->instance('current_tenant_id', (string) $tenant->id);
+            }
+        }
+
+        if (! CashRegisterSession::query()->rejectedOpen()->exists()) {
+            return null;
+        }
+
+        return 'Clôturez la session de caisse (demande rejetée) avant de vous déconnecter.';
     }
 
     /**

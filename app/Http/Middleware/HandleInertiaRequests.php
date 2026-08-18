@@ -2,6 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\CashRegisterSession;
+use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -52,6 +55,38 @@ class HandleInertiaRequests extends Middleware
                 'environment' => config('sentry.environment') ?: config('app.env'),
                 'release' => config('sentry.release'),
             ],
+            'cashSessionDuty' => $this->cashSessionDuty($user),
+        ];
+    }
+
+    /**
+     * @return array{must_close: bool, count: int, message: string|null}
+     */
+    private function cashSessionDuty(?User $user): array
+    {
+        $empty = ['must_close' => false, 'count' => 0, 'message' => null];
+
+        if ($user === null || ! $user->canApproveCashSessions()) {
+            return $empty;
+        }
+
+        if ($user->isSuperAdmin() && ! app()->bound('current_tenant_id')) {
+            $tenant = Tenant::query()->orderBy('created_at')->first();
+            if ($tenant) {
+                app()->instance('current_tenant_id', (string) $tenant->id);
+            }
+        }
+
+        $count = CashRegisterSession::query()->rejectedOpen()->count();
+
+        if ($count === 0) {
+            return $empty;
+        }
+
+        return [
+            'must_close' => true,
+            'count' => $count,
+            'message' => 'Clôturez la session de caisse (demande rejetée) avant de vous déconnecter.',
         ];
     }
 }

@@ -163,7 +163,7 @@ final class CashSessionReportQuery
                 ?? TenantClock::format($session->opened_at, $tenant, 'd/m/Y'),
             'business_date_iso' => optional($session->business_date)?->toDateString(),
             'status' => $session->status,
-            'status_label' => $this->statusLabel($session->status),
+            'status_label' => $this->statusLabel($session->status, $session->closeRequestWasRejected()),
             'opener_name' => $session->opener?->name,
             'site_name' => $session->site?->name,
             'opened_at' => TenantClock::format($session->opened_at, $tenant),
@@ -172,6 +172,7 @@ final class CashSessionReportQuery
             'sales_total' => (string) ($session->sales_sum_grand_total ?? '0'),
             'opening_float' => (string) $session->opening_float,
             'variance' => $session->variance !== null ? (string) $session->variance : null,
+            'close_request_rejected' => $session->closeRequestWasRejected(),
         ];
     }
 
@@ -186,7 +187,7 @@ final class CashSessionReportQuery
             'id' => $session->id,
             'number' => $session->number,
             'status' => $session->status,
-            'status_label' => $this->statusLabel($session->status),
+            'status_label' => $this->statusLabel($session->status, $session->closeRequestWasRejected()),
             'business_date' => optional($session->business_date)?->format('d/m/Y'),
             'site_name' => $session->site?->name,
             'warehouse_name' => $session->warehouse?->name,
@@ -203,11 +204,16 @@ final class CashSessionReportQuery
             'opening_notes' => $session->opening_notes,
             'closing_notes' => $session->closing_notes,
             'opened_by' => $session->opened_by,
+            'close_request_rejected' => $session->closeRequestWasRejected(),
         ];
     }
 
-    public function statusLabel(string $status): string
+    public function statusLabel(string $status, bool $rejected = false): string
     {
+        if ($rejected && $status === CashRegisterSession::STATUS_OPEN) {
+            return 'Session en cours (demande rejetée)';
+        }
+
         return match ($status) {
             CashRegisterSession::STATUS_OPEN => 'Ouverte',
             CashRegisterSession::STATUS_CLOSURE_REQUESTED => 'Fermeture demandée',

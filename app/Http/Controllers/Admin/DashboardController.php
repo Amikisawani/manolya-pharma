@@ -34,6 +34,18 @@ class DashboardController extends Controller
                 ->all()
             : [];
 
+        $rejectedClosures = $tenant
+            ? CashRegisterSession::query()
+                ->with(['opener:id,name', 'site:id,name', 'tenant:id,timezone'])
+                ->rejectedOpen()
+                ->orderByDesc('close_request_rejected_at')
+                ->limit(8)
+                ->get()
+                ->map(fn (CashRegisterSession $session) => $sessionReports->presentRow($session))
+                ->values()
+                ->all()
+            : [];
+
         return Inertia::render('Admin/Dashboard', [
             'stats' => [
                 'tenants' => Tenant::query()->count(),
@@ -41,8 +53,10 @@ class DashboardController extends Controller
                 'products' => $tenant ? Product::query()->count() : 0,
                 'sales' => $tenant ? Sale::query()->count() : 0,
                 'pending_closures' => count($pendingClosures),
+                'rejected_closures' => count($rejectedClosures),
             ],
             'pendingClosures' => $pendingClosures,
+            'rejectedClosures' => $rejectedClosures,
             'tenant' => $tenant ? [
                 'id' => $tenant->id,
                 'name' => $tenant->name,

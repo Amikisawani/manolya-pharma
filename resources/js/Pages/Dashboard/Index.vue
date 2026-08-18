@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MoneyAmount from '@/Components/MoneyAmount.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { onMounted, ref, watch } from 'vue';
 import ApexCharts from 'apexcharts';
 
@@ -11,9 +11,18 @@ const props = defineProps<{
     topProductsToday: Array<Record<string, unknown>>;
     topCategories: Array<Record<string, unknown>>;
     pendingClosures?: Array<Record<string, any>>;
+    rejectedClosures?: Array<Record<string, any>>;
     canReviewSessions?: boolean;
+    canApproveSessions?: boolean;
     chartPlaceholder: { labels: string[]; series: number[] };
 }>();
+
+const actingOn = ref<number | string | null>(null);
+
+const postAction = (url: string, id: number | string) => {
+    actingOn.value = id;
+    router.post(url, {}, { onFinish: () => { actingOn.value = null; } });
+};
 
 const chartEl = ref<HTMLElement | null>(null);
 let chart: ApexCharts | null = null;
@@ -135,17 +144,64 @@ watch(() => props.chartPlaceholder, renderChart, { deep: true });
             <h2 class="mp-section-title">Fermetures de caisse à confirmer</h2>
             <div v-for="session in pendingClosures" :key="session.id" class="mp-row">
                 <div>
-                    <div class="font-medium">{{ session.number }}</div>
+                    <div class="font-medium">
+                        {{ session.opener_name }} demande confirmation de la fermeture
+                    </div>
                     <div class="text-xs text-[color:var(--mp-muted)]">
-                        {{ session.opener_name }} · {{ session.business_date }} · {{ session.opened_at }}
+                        {{ session.number }} · {{ session.business_date }} · {{ session.opened_at }}
                     </div>
                 </div>
-                <Link
-                    :href="route('reports.cash-sessions.show', session.id)"
+                <div class="flex flex-wrap gap-2">
+                    <Link
+                        :href="route('reports.cash-sessions.show', session.id)"
+                        class="mp-btn mp-btn-ghost"
+                    >
+                        Voir
+                    </Link>
+                    <button
+                        v-if="canApproveSessions"
+                        type="button"
+                        class="mp-btn mp-btn-primary"
+                        :disabled="actingOn === session.id"
+                        @click="postAction(route('reports.cash-sessions.confirm', session.id), session.id)"
+                    >
+                        Valider
+                    </button>
+                    <button
+                        v-if="canApproveSessions"
+                        type="button"
+                        class="mp-btn mp-btn-ghost"
+                        :disabled="actingOn === session.id"
+                        @click="postAction(route('reports.cash-sessions.reject', session.id), session.id)"
+                    >
+                        Rejeter
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section v-if="canApproveSessions && rejectedClosures?.length" class="mt-10">
+            <h2 class="mp-section-title">Sessions à clôturer (demande rejetée)</h2>
+            <p class="mt-2 text-sm text-[color:var(--mp-muted)]">
+                Vous ne pouvez pas vous déconnecter tant que ces caisses ne sont pas fermées.
+            </p>
+            <div v-for="session in rejectedClosures" :key="session.id" class="mp-row">
+                <div>
+                    <div class="font-medium">
+                        {{ session.opener_name }} — session en cours (demande rejetée)
+                    </div>
+                    <div class="text-xs text-[color:var(--mp-muted)]">
+                        {{ session.number }} · {{ session.business_date }}
+                    </div>
+                </div>
+                <button
+                    type="button"
                     class="mp-btn mp-btn-primary"
+                    :disabled="actingOn === session.id"
+                    @click="postAction(route('reports.cash-sessions.confirm', session.id), session.id)"
                 >
-                    Voir / confirmer
-                </Link>
+                    Clôturer
+                </button>
             </div>
         </section>
 
