@@ -30,6 +30,8 @@ const submit = () => {
             </p>
             <p class="mt-4 text-sm" style="color: #9aaba2">
                 Espace plateforme — hors application pharmacie.
+                Comptes caisse / owner :
+                <a href="/login" class="underline" style="color: #a8d5c0">/login</a>
             </p>
             <div
                 v-if="activeSession"

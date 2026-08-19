@@ -33,6 +33,8 @@ services:
         sync: false
       - key: SETUP_PHARMACY_NAME
         value: Pharmacie Manolya
+      - key: SETUP_PHARMACY_OWNER_EMAIL
+        value: owner@manolya-pharma.site
       - key: LOG_CHANNEL
         value: stderr
       - key: DB_CONNECTION

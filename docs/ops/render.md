@@ -33,7 +33,7 @@ Garder la ligne `base64:...` pour Render (`APP_KEY`).
 | Variable | Valeur |
 |----------|--------|
 | `APP_KEY` | `base64:...` (étape 2) |
-| `APP_URL` | `https://<nom-service>.onrender.com` (après 1er deploy, mettre à jour) |
+| `APP_URL` | `https://manolya-pharma.site` |
 | `DB_HOST` | host Neon |
 | `DB_DATABASE` | nom DB Neon |
 | `DB_USERNAME` | user Neon |
@@ -43,7 +43,11 @@ Garder la ligne `base64:...` pour Render (`APP_KEY`).
 | `MAIL_FROM_ADDRESS` | `amikisawani15@icloud.com` |
 
 5. Deploy → attendre le build Docker
-6. Ouvrir l’URL Render → `/login`
+6. Connexions :
+   - Pharmacie : `https://manolya-pharma.site/login` (`owner@manolya-pharma.site`)
+   - Super admin : `https://manolya-pharma.site/admin/login` (compte `SETUP_OWNER_EMAIL`)
+
+Si la base a été vidée, le démarrage (`manolya:bootstrap`) recrée le super admin **et** un owner pharmacie lorsqu’aucun compte `/login` n’existe.
 
 ## 4. Seed démo (optionnel)
 

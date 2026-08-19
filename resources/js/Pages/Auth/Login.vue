@@ -30,7 +30,13 @@ const submit = () => {
         <Head title="Connexion" />
 
         <h1 class="mp-display text-3xl">Connexion</h1>
-        <p class="mt-2 text-sm text-[color:var(--mp-muted)]">Accédez à votre pharmacie</p>
+        <p class="mt-2 text-sm text-[color:var(--mp-muted)]">
+            Accédez à l’application pharmacie (caisse, stock, ventes).
+        </p>
+        <p class="mt-1 text-sm text-[color:var(--mp-muted)]">
+            Super admin plateforme :
+            <Link :href="route('admin.login')" class="text-[color:var(--mp-accent)]">/admin/login</Link>
+        </p>
 
         <div
             v-if="activeSession"

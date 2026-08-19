@@ -56,6 +56,8 @@ class ManolyaBootstrap
                 'site_code' => $admin['site_code'] ?? config('manolya.bootstrap.site_code'),
             ]);
 
+            $this->ensurePharmacyOwner();
+
             return $superAdmin->fresh(['roles']);
         });
     }
@@ -105,6 +107,58 @@ class ManolyaBootstrap
         return $tenant;
     }
 
+    /**
+     * Recrée un compte owner pharmacie (/login) s’il n’en existe aucun.
+     * Ne touche pas aux comptes déjà présents.
+     */
+    public function ensurePharmacyOwner(): ?User
+    {
+        $this->ensureRoles();
+        $tenant = $this->ensureVirginPharmacyStructure();
+        $site = Site::query()
+            ->where('tenant_id', $tenant->id)
+            ->orderByDesc('is_main')
+            ->first();
+
+        if ($site === null) {
+            return null;
+        }
+
+        if (User::query()->where('tenant_id', $tenant->id)->exists()) {
+            return null;
+        }
+
+        $email = strtolower((string) config('manolya.bootstrap.pharmacy_owner_email'));
+        $name = (string) config('manolya.bootstrap.pharmacy_owner_name');
+        $password = (string) config('manolya.bootstrap.owner_password');
+
+        if ($email === '' || $name === '' || $password === '') {
+            return null;
+        }
+
+        if (User::withTrashed()->where('email', $email)->exists()) {
+            $host = parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'manolya-pharma.site';
+            $email = 'owner@'.$host;
+        }
+
+        if (User::withTrashed()->where('email', $email)->exists()) {
+            return null;
+        }
+
+        $owner = User::query()->create([
+            'tenant_id' => $tenant->id,
+            'site_id' => $site->id,
+            'name' => $name,
+            'email' => $email,
+            'password' => $password,
+            'is_active' => true,
+            'email_verified_at' => now(),
+        ]);
+        $owner->assignRole('owner');
+
+        return $owner->fresh(['roles']);
+    }
+
     public function bootstrapFromConfigIfEmpty(): ?User
     {
         $this->ensureRoles();
@@ -144,6 +198,7 @@ class ManolyaBootstrap
             ])->save();
             $existing->syncRoles(['super_admin']);
             $this->ensureVirginPharmacyStructure($meta);
+            $this->ensurePharmacyOwner();
 
             return $existing->fresh(['roles']);
         }
