@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BrandLockup from '@/Components/BrandLockup.vue';
 import InputError from '@/Components/InputError.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 
@@ -24,10 +25,7 @@ const submit = () => {
 
     <div class="flex min-h-screen items-center justify-center px-4" style="background: #101412; color: #e8f5ef">
         <div class="w-full max-w-md border p-8" style="border-color: #24302a; background: #141a17">
-            <div class="mp-display text-3xl text-[color:var(--mp-sidebar-active)]">Manolya</div>
-            <p class="mt-2 text-xs font-semibold uppercase tracking-[0.28em]" style="color: #7a857e">
-                Super administration
-            </p>
+            <BrandLockup variant="dark" subtitle="Super administration" class="text-[#e8f5ef]" />
             <p class="mt-4 text-sm" style="color: #9aaba2">
                 Espace plateforme — hors application pharmacie.
                 Comptes caisse / owner :

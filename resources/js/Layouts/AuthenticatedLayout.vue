@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BrandLockup from '@/Components/BrandLockup.vue';
 import { computed, ref } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
@@ -78,10 +79,7 @@ const isActive = (pattern: string) => {
             style="background: var(--mp-sidebar)"
         >
             <div class="shrink-0 px-5 pb-5 pt-8">
-                <div class="mp-display text-[1.65rem] leading-none text-[color:var(--mp-sidebar-active)]">Manolya</div>
-                <div class="mt-2 text-[0.65rem] font-medium uppercase tracking-[0.28em]" style="color: var(--mp-sidebar-muted)">
-                    Pharma
-                </div>
+                <BrandLockup variant="dark" class="text-[color:var(--mp-sidebar-active)]" />
                 <div class="mt-5 border-t pt-4 text-xs" style="border-color: #24302a; color: var(--mp-sidebar-muted)">
                     {{ pharmacy }}
                 </div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BrandLockup from '@/Components/BrandLockup.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
@@ -17,10 +18,7 @@ const cashSessionDuty = computed(() => (page.props as {
             style="border-color: #24302a; background: #0e1311"
         >
             <div class="px-5 pb-4 pt-8">
-                <div class="mp-display text-2xl text-[color:var(--mp-sidebar-active)]">Manolya</div>
-                <div class="mt-2 text-[0.65rem] font-semibold uppercase tracking-[0.24em]" style="color: #7a857e">
-                    Super admin
-                </div>
+                <BrandLockup variant="dark" subtitle="Super admin" class="text-[color:var(--mp-sidebar-active)]" />
             </div>
             <nav class="flex-1 space-y-1 px-3 py-2 text-sm">
                 <Link

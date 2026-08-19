@@ -31,7 +31,6 @@ const submit = () => {
         <Head :title="setup ? 'Configurer 2FA' : 'Vérification 2FA'" />
 
         <div class="mb-6 text-center">
-            <div class="mp-display text-3xl text-[color:var(--mp-ink)]">Manolya Pharma</div>
             <p class="mt-2 text-sm text-[color:var(--mp-muted)]">
                 {{ setup ? 'Activez l’authentification à deux facteurs' : 'Saisissez le code de votre application d’authentification' }}
             </p>
