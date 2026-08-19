@@ -308,3 +308,13 @@ body::-webkit-scrollbar-thumb:hover {
     background: transparent;
 }
 
+.mp-tip-fade-enter-active,
+.mp-tip-fade-leave-active {
+    transition: opacity 0.55s ease;
+}
+
+.mp-tip-fade-enter-from,
+.mp-tip-fade-leave-to {
+    opacity: 0;
+}
+

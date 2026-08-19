@@ -5,12 +5,36 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 defineProps<{
     canResetPassword?: boolean;
     status?: string;
     activeSession?: { name?: string; email?: string; context?: string } | null;
 }>();
+
+const tips = [
+    'Ouvrez une session caisse avant d’encaisser.',
+    'Une seule demande de fermeture par session.',
+    'Les montants s’affichent en francs congolais (Fc).',
+    'Le propriétaire valide ou rejette la fermeture.',
+    'Comptez les espèces avant d’envoyer la demande.',
+];
+
+const tipIndex = ref(0);
+let tipTimer: ReturnType<typeof setInterval> | null = null;
+
+onMounted(() => {
+    tipTimer = setInterval(() => {
+        tipIndex.value = (tipIndex.value + 1) % tips.length;
+    }, 4200);
+});
+
+onBeforeUnmount(() => {
+    if (tipTimer) {
+        clearInterval(tipTimer);
+    }
+});
 
 const form = useForm({
     email: '',
@@ -30,13 +54,16 @@ const submit = () => {
         <Head title="Connexion" />
 
         <h1 class="mp-display text-3xl">Connexion</h1>
-        <p class="mt-2 text-sm text-[color:var(--mp-muted)]">
-            Accédez à l’application pharmacie (caisse, stock, ventes).
-        </p>
-        <p class="mt-1 text-sm text-[color:var(--mp-muted)]">
-            Super admin plateforme :
-            <Link :href="route('admin.login')" class="text-[color:var(--mp-accent)]">/admin/login</Link>
-        </p>
+        <div class="relative mt-2 h-10 overflow-hidden">
+            <Transition name="mp-tip-fade" mode="out-in">
+                <p
+                    :key="tipIndex"
+                    class="absolute inset-0 text-sm leading-relaxed text-[color:var(--mp-muted)]"
+                >
+                    {{ tips[tipIndex] }}
+                </p>
+            </Transition>
+        </div>
 
         <div
             v-if="activeSession"
