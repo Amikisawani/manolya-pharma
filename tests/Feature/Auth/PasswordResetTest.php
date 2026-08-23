@@ -70,4 +70,29 @@ class PasswordResetTest extends TestCase
             return true;
         });
     }
+
+    public function test_reset_password_does_not_reveal_whether_the_account_exists(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create();
+
+        $known = $this->from('/forgot-password')->post('/forgot-password', [
+            'email' => $user->email,
+        ]);
+
+        $unknown = $this->from('/forgot-password')->post('/forgot-password', [
+            'email' => 'inconnu@example.com',
+        ]);
+
+        $known->assertSessionHasNoErrors()->assertSessionHas('status');
+        $unknown->assertSessionHasNoErrors()->assertSessionHas('status');
+        $this->assertSame(
+            session('status'),
+            'Si un compte existe pour cette adresse, un lien de réinitialisation a été envoyé.',
+        );
+
+        Notification::assertSentTo($user, ResetPassword::class);
+        Notification::assertCount(1);
+    }
 }

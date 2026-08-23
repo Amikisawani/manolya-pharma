@@ -29,6 +29,7 @@ use App\Http\Controllers\Stock\BatchController;
 use App\Http\Controllers\Stock\StockAdjustmentController;
 use App\Http\Controllers\Stock\StockMovementController;
 use App\Services\ManolyaBootstrap;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function (ManolyaBootstrap $bootstrap) {
@@ -36,7 +37,7 @@ Route::get('/', function (ManolyaBootstrap $bootstrap) {
         return redirect()->route('setup.create');
     }
 
-    return auth()->check()
+    return Auth::guard('web')->check()
         ? redirect()->route('dashboard')
         : redirect()->route('login');
 });
@@ -47,14 +48,19 @@ Route::middleware('guest')->group(function () {
 });
 
 // Espace super admin (hors app pharmacie) — style HamilTech /admin/login
-Route::prefix('admin')->name('admin.')->group(function () {
-    // Login admin toujours accessible, même si session pharmacie / admin déjà ouverte
+Route::prefix('admin')->name('admin.')->middleware('admin.guard')->group(function () {
+    // Login admin indépendant de la session pharmacie
     Route::get('login', [AdminAuthController::class, 'create'])->name('login');
     Route::post('login', [AdminAuthController::class, 'store'])
         ->middleware('throttle:10,1')
         ->name('login.store');
+    Route::get('two-factor/challenge', [TwoFactorController::class, 'challenge'])
+        ->name('two-factor.challenge');
+    Route::post('two-factor/challenge', [TwoFactorController::class, 'verify'])
+        ->middleware('throttle:5,1')
+        ->name('two-factor.verify');
 
-    Route::middleware(['auth', 'super_admin'])->group(function () {
+    Route::middleware(['auth:admin', 'super_admin'])->group(function () {
         Route::post('logout', [AdminAuthController::class, 'destroy'])->name('logout');
         Route::get('/', AdminDashboardController::class)->name('dashboard');
         Route::get('cash-sessions', [AdminCashSessionReportController::class, 'index'])->name('cash-sessions.index');
@@ -72,14 +78,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
 });
 
 Route::get('/two-factor/challenge', [TwoFactorController::class, 'challenge'])->name('two-factor.challenge');
-Route::post('/two-factor/challenge', [TwoFactorController::class, 'verify'])->name('two-factor.verify');
+Route::post('/two-factor/challenge', [TwoFactorController::class, 'verify'])
+    ->middleware('throttle:5,1')
+    ->name('two-factor.verify');
 
-Route::middleware('auth')->group(function () {
+Route::middleware('auth:web')->group(function () {
     Route::get('/two-factor/setup', [TwoFactorController::class, 'setup'])->name('two-factor.setup');
     Route::post('/two-factor/enable', [TwoFactorController::class, 'enable'])->name('two-factor.enable');
 });
 
-Route::middleware(['auth', 'tenant', 'deny_super_admin'])->group(function () {
+Route::middleware(['auth:web', 'tenant', 'deny_super_admin'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

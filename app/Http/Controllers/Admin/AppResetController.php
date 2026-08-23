@@ -8,6 +8,7 @@ use App\Services\ManolyaBootstrap;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,7 +30,7 @@ class AppResetController extends Controller
     {
         $data = $request->validate([
             'confirmation' => ['required', 'in:REINITIALISER'],
-            'password' => ['required', 'current_password'],
+            'password' => ['required', 'current_password:admin'],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
             'new_password' => ['required', 'confirmed', Password::defaults()],
@@ -40,9 +41,12 @@ class AppResetController extends Controller
             'email' => $data['email'],
         ]);
 
-        Auth::logout();
+        Auth::guard('admin')->logout();
+        Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+        Cookie::queue(Cookie::forget(config('session.pharmacy_cookie'), config('session.path'), config('session.domain')));
+        Cookie::queue(Cookie::forget(config('session.admin_cookie'), config('session.path'), config('session.domain')));
 
         $admin = $bootstrap->factoryReset([
             'name' => $data['name'],
@@ -51,7 +55,7 @@ class AppResetController extends Controller
             'pharmacy_name' => $data['pharmacy_name'],
         ]);
 
-        Auth::login($admin);
+        Auth::guard('admin')->login($admin);
         $request->session()->regenerate();
 
         return redirect()->route('admin.dashboard')->with('success', 'Application remise à zéro (données test effacées).');

@@ -13,18 +13,21 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function () {
     // Inscription publique désactivée : comptes via /admin/users (owner) ou /setup
     Route::get('register', fn () => redirect()->route('login'))->name('register');
+    Route::post('register', fn () => redirect()->route('login'));
 
     // /login accessible même si une autre session est ouverte (indépendant de /admin/login)
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->middleware('throttle:5,1')
         ->name('password.email');
 
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
         ->name('password.reset');
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
+        ->middleware('throttle:5,1')
         ->name('password.store');
 });
 
@@ -33,7 +36,7 @@ Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('lo
 Route::post('login', [AuthenticatedSessionController::class, 'store'])
     ->middleware('throttle:10,1');
 
-Route::middleware('auth')->group(function () {
+Route::middleware('auth:web')->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
 

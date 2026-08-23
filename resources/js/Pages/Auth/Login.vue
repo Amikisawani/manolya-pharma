@@ -70,8 +70,8 @@ const submit = () => {
             class="mt-4 border px-3 py-2 text-sm text-[color:var(--mp-muted)]"
             style="border-color: var(--mp-line)"
         >
-            Session ouverte : {{ activeSession.name }} ({{ activeSession.context }}).
-            Se connecter ici remplacera cette session.
+            Session pharmacie : {{ activeSession.name }}.
+            L’espace admin n’est pas concerné.
         </div>
 
         <div v-if="status" class="mt-4 text-sm" style="color: var(--mp-success)">{{ status }}</div>
@@ -83,10 +83,16 @@ const submit = () => {
                     id="email"
                     v-model="form.email"
                     type="email"
+                    name="email"
                     class="mt-1 block w-full"
                     required
                     autofocus
                     autocomplete="username"
+                    inputmode="email"
+                    autocapitalize="none"
+                    autocorrect="off"
+                    spellcheck="false"
+                    maxlength="255"
                 />
                 <InputError class="mt-2" :message="form.errors.email" />
             </div>
@@ -97,9 +103,11 @@ const submit = () => {
                     id="password"
                     v-model="form.password"
                     type="password"
+                    name="password"
                     class="mt-1 block w-full"
                     required
                     autocomplete="current-password"
+                    maxlength="72"
                 />
                 <InputError class="mt-2" :message="form.errors.password" />
             </div>

@@ -10,7 +10,6 @@ defineProps<{
 const form = useForm({
     email: '',
     password: '',
-    remember: false,
 });
 
 const submit = () => {
@@ -36,8 +35,8 @@ const submit = () => {
                 class="mt-4 border px-3 py-2 text-sm"
                 style="border-color: #3a463f; color: #9aaba2"
             >
-                Session ouverte : {{ activeSession.name }} ({{ activeSession.context }}).
-                Se connecter ici remplacera cette session.
+                Session admin : {{ activeSession.name }}.
+                L’espace pharmacie n’est pas concerné.
             </div>
 
             <form class="mt-8 space-y-4" @submit.prevent="submit">
@@ -47,9 +46,15 @@ const submit = () => {
                         id="email"
                         v-model="form.email"
                         type="email"
+                        name="email"
                         required
                         autofocus
                         autocomplete="username"
+                        inputmode="email"
+                        autocapitalize="none"
+                        autocorrect="off"
+                        spellcheck="false"
+                        maxlength="255"
                         class="w-full border px-3 py-2.5 text-sm"
                         style="border-color: #3a463f; background: #0e1311; color: #e8f5ef"
                     />
@@ -61,16 +66,15 @@ const submit = () => {
                         id="password"
                         v-model="form.password"
                         type="password"
+                        name="password"
                         required
                         autocomplete="current-password"
+                        maxlength="72"
                         class="w-full border px-3 py-2.5 text-sm"
                         style="border-color: #3a463f; background: #0e1311; color: #e8f5ef"
                     />
+                    <InputError class="mt-2" :message="form.errors.password" />
                 </div>
-                <label class="flex items-center gap-2 text-sm" style="color: #9aaba2">
-                    <input v-model="form.remember" type="checkbox" />
-                    Se souvenir de moi
-                </label>
                 <button
                     type="submit"
                     class="w-full px-4 py-2.5 text-sm font-semibold"

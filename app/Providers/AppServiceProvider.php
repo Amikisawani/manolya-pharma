@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -60,5 +61,15 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Sale::class, SalePolicy::class);
         Gate::policy(PurchaseOrder::class, PurchaseOrderPolicy::class);
         Gate::policy(AuditRecord::class, AuditRecordPolicy::class);
+
+        Password::defaults(function () {
+            $rule = Password::min(8);
+
+            if ($this->app->environment('production')) {
+                $rule = $rule->mixedCase()->numbers()->uncompromised();
+            }
+
+            return $rule;
+        });
     }
 }

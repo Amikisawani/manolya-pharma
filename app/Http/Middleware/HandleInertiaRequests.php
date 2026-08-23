@@ -32,7 +32,7 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        $user = $request->user();
+        $user = $this->portalUser($request);
         $user?->loadMissing(['tenant', 'roles', 'permissions']);
 
         return [
@@ -57,6 +57,15 @@ class HandleInertiaRequests extends Middleware
             ],
             'cashSessionDuty' => $this->cashSessionDuty($user),
         ];
+    }
+
+    private function portalUser(Request $request): ?User
+    {
+        if ($request->is('admin') || $request->is('admin/*')) {
+            return $request->user('admin');
+        }
+
+        return $request->user('web');
     }
 
     /**

@@ -307,7 +307,7 @@ class CashSessionWorkflowTest extends TestCase
                 'closing_counted' => 10000,
             ]);
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->get(route('admin.dashboard'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -315,11 +315,11 @@ class CashSessionWorkflowTest extends TestCase
                 ->where('pendingClosures.0.opener_name', 'Caissier Test')
             );
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->post(route('admin.cash-sessions.reject', $session))
             ->assertRedirect();
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->get(route('admin.dashboard'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -327,20 +327,20 @@ class CashSessionWorkflowTest extends TestCase
                 ->where('cashSessionDuty.must_close', true)
             );
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->post(route('admin.logout'))
             ->assertRedirect(route('admin.dashboard'))
             ->assertSessionHas('error');
-        $this->assertAuthenticatedAs($admin);
+        $this->assertAuthenticatedAs($admin, 'admin');
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->post(route('admin.cash-sessions.confirm', $session))
             ->assertRedirect();
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->post(route('admin.logout'))
             ->assertRedirect(route('admin.login'));
-        $this->assertGuest();
+        $this->assertGuest('admin');
     }
 
     public function test_super_admin_can_open_cash_session_report(): void
@@ -360,7 +360,7 @@ class CashSessionWorkflowTest extends TestCase
         ]);
         $admin->assignRole('super_admin');
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->get(route('admin.cash-sessions.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->component('Admin/CashSessions/Index'));
