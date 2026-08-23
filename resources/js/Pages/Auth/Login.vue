@@ -83,10 +83,16 @@ const submit = () => {
                     id="email"
                     v-model="form.email"
                     type="email"
+                    name="email"
                     class="mt-1 block w-full"
                     required
                     autofocus
                     autocomplete="username"
+                    inputmode="email"
+                    autocapitalize="none"
+                    autocorrect="off"
+                    spellcheck="false"
+                    maxlength="255"
                 />
                 <InputError class="mt-2" :message="form.errors.email" />
             </div>
@@ -97,9 +103,11 @@ const submit = () => {
                     id="password"
                     v-model="form.password"
                     type="password"
+                    name="password"
                     class="mt-1 block w-full"
                     required
                     autocomplete="current-password"
+                    maxlength="72"
                 />
                 <InputError class="mt-2" :message="form.errors.password" />
             </div>

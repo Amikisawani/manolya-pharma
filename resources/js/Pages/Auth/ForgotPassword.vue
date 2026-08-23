@@ -43,11 +43,16 @@ const submit = () => {
                 <TextInput
                     id="email"
                     type="email"
+                    name="email"
                     class="mt-1 block w-full"
                     v-model="form.email"
                     required
                     autofocus
                     autocomplete="username"
+                    inputmode="email"
+                    autocapitalize="none"
+                    spellcheck="false"
+                    maxlength="255"
                 />
 
                 <InputError class="mt-2" :message="form.errors.email" />

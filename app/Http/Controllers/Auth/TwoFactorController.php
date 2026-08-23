@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\Auth\LoginAttemptService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,7 +19,11 @@ class TwoFactorController extends Controller
     public function challenge(Request $request): Response|RedirectResponse
     {
         if (! $request->session()->has('login.id')) {
-            return redirect()->route('login');
+            $context = $request->session()->get('login.context');
+
+            return redirect()->route(
+                $context === LoginAttemptService::CONTEXT_ADMIN ? 'admin.login' : 'login'
+            );
         }
 
         return Inertia::render('Auth/TwoFactorChallenge');
@@ -26,7 +32,7 @@ class TwoFactorController extends Controller
     public function verify(Request $request, Google2FA $google2fa): RedirectResponse
     {
         $request->validate([
-            'code' => ['required', 'string'],
+            'code' => ['required', 'string', 'min:6', 'max:64'],
         ]);
 
         $userId = $request->session()->get('login.id');
@@ -34,30 +40,61 @@ class TwoFactorController extends Controller
             return redirect()->route('login');
         }
 
-        /** @var User $user */
-        $user = User::query()->findOrFail($userId);
+        $throttleKey = 'two-factor:'.$userId.'|'.$request->ip();
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
 
-        $valid = $google2fa->verifyKey((string) $user->two_factor_secret, $request->string('code')->toString());
-
-        if (! $valid) {
-            $recovery = collect($user->two_factor_recovery_codes ?? []);
-            $code = $request->string('code')->toString();
-            if (! $recovery->contains($code)) {
-                throw ValidationException::withMessages([
-                    'code' => 'Code 2FA invalide.',
-                ]);
-            }
-
-            $user->forceFill([
-                'two_factor_recovery_codes' => $recovery->reject(fn ($c) => $c === $code)->values()->all(),
-            ])->save();
+            throw ValidationException::withMessages([
+                'code' => 'Trop de tentatives. Réessayez dans '.$seconds.' secondes.',
+            ]);
         }
 
-        Auth::login($user, (bool) $request->session()->pull('login.remember', false));
-        $request->session()->forget('login.id');
-        $request->session()->regenerate();
+        /** @var User|null $user */
+        $user = User::query()->find($userId);
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        if ($user === null || ! $user->is_active) {
+            $request->session()->forget(['login.id', 'login.remember', 'login.intended', 'login.context']);
+
+            return redirect()->route('login');
+        }
+
+        $code = trim($request->string('code')->toString());
+        $valid = $google2fa->verifyKey((string) $user->two_factor_secret, $code, 1);
+
+        if (! $valid && ! $this->consumeRecoveryCode($user, $code)) {
+            RateLimiter::hit($throttleKey, 900);
+
+            throw ValidationException::withMessages([
+                'code' => 'Code 2FA invalide.',
+            ]);
+        }
+
+        RateLimiter::clear($throttleKey);
+
+        $context = (string) $request->session()->pull('login.context', LoginAttemptService::CONTEXT_PHARMACY);
+        $remember = $context === LoginAttemptService::CONTEXT_ADMIN
+            ? false
+            : (bool) $request->session()->pull('login.remember', false);
+
+        $request->session()->forget(['login.id', 'login.remember', 'login.intended', 'login.context']);
+
+        Auth::login($user, $remember);
+        $request->session()->regenerate();
+        $request->session()->forget('url.intended');
+
+        if ($context === LoginAttemptService::CONTEXT_ADMIN) {
+            if (! $user->isSuperAdmin()) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return redirect()->route('admin.login');
+            }
+
+            return redirect()->route('admin.dashboard');
+        }
+
+        return redirect()->route('dashboard');
     }
 
     public function setup(Request $request, Google2FA $google2fa): Response
@@ -70,7 +107,9 @@ class TwoFactorController extends Controller
         if (! $user->two_factor_secret) {
             $user->forceFill([
                 'two_factor_secret' => $secret,
-                'two_factor_recovery_codes' => collect(range(1, 8))->map(fn () => strtoupper(bin2hex(random_bytes(4))))->all(),
+                'two_factor_recovery_codes' => collect(range(1, 8))
+                    ->map(fn () => strtoupper(bin2hex(random_bytes(4))))
+                    ->all(),
             ])->save();
         }
 
@@ -90,12 +129,12 @@ class TwoFactorController extends Controller
 
     public function enable(Request $request, Google2FA $google2fa): RedirectResponse
     {
-        $request->validate(['code' => ['required', 'string']]);
+        $request->validate(['code' => ['required', 'string', 'min:6', 'max:64']]);
 
         /** @var User $user */
         $user = $request->user();
 
-        if (! $google2fa->verifyKey((string) $user->two_factor_secret, $request->string('code')->toString())) {
+        if (! $google2fa->verifyKey((string) $user->two_factor_secret, $request->string('code')->toString(), 1)) {
             throw ValidationException::withMessages([
                 'code' => 'Code de confirmation invalide.',
             ]);
@@ -104,5 +143,33 @@ class TwoFactorController extends Controller
         $user->forceFill(['two_factor_confirmed_at' => now()])->save();
 
         return redirect()->route('profile.edit')->with('success', 'Authentification à deux facteurs activée.');
+    }
+
+    private function consumeRecoveryCode(User $user, string $code): bool
+    {
+        $normalized = strtoupper($code);
+        $codes = $user->two_factor_recovery_codes ?? [];
+        $matched = false;
+        $remaining = [];
+
+        foreach ($codes as $stored) {
+            if (! $matched && hash_equals((string) $stored, $normalized)) {
+                $matched = true;
+
+                continue;
+            }
+
+            $remaining[] = $stored;
+        }
+
+        if (! $matched) {
+            return false;
+        }
+
+        $user->forceFill([
+            'two_factor_recovery_codes' => $remaining,
+        ])->save();
+
+        return true;
     }
 }

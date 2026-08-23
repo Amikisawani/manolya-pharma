@@ -1,10 +1,15 @@
 <?php
 
+use App\Http\Middleware\DenySuperAdminFromPharmacy;
+use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\EnsureTenant;
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Sentry\Laravel\Integration;
@@ -23,13 +28,14 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'tenant' => EnsureTenant::class,
-            'super_admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
-            'deny_super_admin' => \App\Http\Middleware\DenySuperAdminFromPharmacy::class,
+            'super_admin' => EnsureSuperAdmin::class,
+            'deny_super_admin' => DenySuperAdminFromPharmacy::class,
         ]);
 
         $middleware->web(append: [
-            \App\Http\Middleware\HandleInertiaRequests::class,
-            \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            HandleInertiaRequests::class,
+            AddLinkHeadersForPreloadedAssets::class,
+            SecurityHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

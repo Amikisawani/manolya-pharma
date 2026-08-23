@@ -58,6 +58,7 @@ const submit = () => {
                     v-model="form.password"
                     required
                     autocomplete="new-password"
+                    maxlength="72"
                 />
 
                 <InputError class="mt-2" :message="form.errors.password" />
@@ -76,6 +77,7 @@ const submit = () => {
                     v-model="form.password_confirmation"
                     required
                     autocomplete="new-password"
+                    maxlength="72"
                 />
 
                 <InputError

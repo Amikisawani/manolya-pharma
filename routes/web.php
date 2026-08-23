@@ -72,7 +72,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
 });
 
 Route::get('/two-factor/challenge', [TwoFactorController::class, 'challenge'])->name('two-factor.challenge');
-Route::post('/two-factor/challenge', [TwoFactorController::class, 'verify'])->name('two-factor.verify');
+Route::post('/two-factor/challenge', [TwoFactorController::class, 'verify'])
+    ->middleware('throttle:5,1')
+    ->name('two-factor.verify');
 
 Route::middleware('auth')->group(function () {
     Route::get('/two-factor/setup', [TwoFactorController::class, 'setup'])->name('two-factor.setup');

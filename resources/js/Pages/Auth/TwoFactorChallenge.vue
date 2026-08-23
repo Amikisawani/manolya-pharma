@@ -47,7 +47,20 @@ const submit = () => {
         <form @submit.prevent="submit">
             <div>
                 <InputLabel for="code" value="Code 2FA" />
-                <TextInput id="code" type="text" class="mt-1 block w-full" v-model="form.code" required autofocus autocomplete="one-time-code" />
+                <TextInput
+                    id="code"
+                    type="text"
+                    name="code"
+                    class="mt-1 block w-full"
+                    v-model="form.code"
+                    required
+                    autofocus
+                    autocomplete="one-time-code"
+                    inputmode="numeric"
+                    autocapitalize="none"
+                    spellcheck="false"
+                    maxlength="64"
+                />
                 <InputError class="mt-2" :message="form.errors.code" />
             </div>
 
