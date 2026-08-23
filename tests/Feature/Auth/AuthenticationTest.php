@@ -40,7 +40,7 @@ class AuthenticationTest extends TestCase
             'password' => 'password',
         ]);
 
-        $this->assertAuthenticated();
+        $this->assertAuthenticatedAs($user, 'web');
         $response->assertRedirect(route('dashboard', absolute: false));
     }
 
@@ -53,7 +53,7 @@ class AuthenticationTest extends TestCase
             'password' => 'password',
         ]);
 
-        $this->assertAuthenticatedAs($user);
+        $this->assertAuthenticatedAs($user, 'web');
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void
@@ -100,7 +100,8 @@ class AuthenticationTest extends TestCase
             'email' => LoginAttemptService::FAILURE_MESSAGE,
         ]);
 
-        $this->assertGuest();
+        $this->assertGuest('web');
+        $this->assertGuest('admin');
     }
 
     public function test_pharmacy_user_cannot_use_admin_login(): void
@@ -114,7 +115,8 @@ class AuthenticationTest extends TestCase
             'email' => LoginAttemptService::FAILURE_MESSAGE,
         ]);
 
-        $this->assertGuest();
+        $this->assertGuest('admin');
+        $this->assertGuest('web');
     }
 
     public function test_super_admin_can_authenticate_on_admin_login(): void
@@ -126,7 +128,8 @@ class AuthenticationTest extends TestCase
             'password' => 'password',
         ]);
 
-        $this->assertAuthenticatedAs($admin);
+        $this->assertAuthenticatedAs($admin, 'admin');
+        $this->assertGuest('web');
         $response->assertRedirect(route('admin.dashboard', absolute: false));
     }
 
@@ -141,7 +144,7 @@ class AuthenticationTest extends TestCase
             'remember' => true,
         ]);
 
-        $this->assertAuthenticatedAs($admin);
+        $this->assertAuthenticatedAs($admin, 'admin');
         $this->assertSame($token, $admin->fresh()->remember_token);
     }
 
@@ -184,9 +187,107 @@ class AuthenticationTest extends TestCase
     {
         $user = $this->pharmacyUser();
 
-        $response = $this->actingAs($user)->post('/logout');
+        $response = $this->actingAs($user, 'web')->post('/logout');
 
-        $this->assertGuest();
+        $this->assertGuest('web');
         $response->assertRedirect('/');
+    }
+
+    public function test_admin_session_does_not_take_over_pharmacy_login_page(): void
+    {
+        $admin = $this->superAdmin();
+
+        $this->post('/admin/login', [
+            'email' => $admin->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticatedAs($admin, 'admin');
+        $this->assertGuest('web');
+
+        $this->get('/login')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Auth/Login')
+                ->where('activeSession', null)
+            );
+
+        $this->get('/')
+            ->assertRedirect(route('login'));
+    }
+
+    public function test_pharmacy_and_admin_sessions_can_coexist(): void
+    {
+        $user = $this->pharmacyUser();
+        $admin = $this->superAdmin();
+
+        $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+        $this->post('/admin/login', [
+            'email' => $admin->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticatedAs($user, 'web');
+        $this->assertAuthenticatedAs($admin, 'admin');
+
+        $this->get('/login')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Auth/Login')
+                ->where('activeSession.email', $user->email)
+                ->where('activeSession.context', 'pharmacie')
+            );
+
+        $this->get('/admin/login')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Auth/Login')
+                ->where('activeSession.email', $admin->email)
+                ->where('activeSession.context', 'admin')
+            );
+    }
+
+    public function test_pharmacy_logout_keeps_admin_session(): void
+    {
+        $user = $this->pharmacyUser();
+        $admin = $this->superAdmin();
+
+        $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+        $this->post('/admin/login', [
+            'email' => $admin->email,
+            'password' => 'password',
+        ]);
+
+        $this->post('/logout');
+
+        $this->assertGuest('web');
+        $this->assertAuthenticatedAs($admin, 'admin');
+    }
+
+    public function test_admin_logout_keeps_pharmacy_session(): void
+    {
+        $user = $this->pharmacyUser();
+        $admin = $this->superAdmin();
+
+        $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+        $this->post('/admin/login', [
+            'email' => $admin->email,
+            'password' => 'password',
+        ]);
+
+        $this->post('/admin/logout');
+
+        $this->assertGuest('admin');
+        $this->assertAuthenticatedAs($user, 'web');
     }
 }

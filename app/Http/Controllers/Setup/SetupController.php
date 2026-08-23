@@ -45,7 +45,7 @@ class SetupController extends Controller
 
         $admin = $bootstrap->bootstrapPlatform($data);
 
-        Auth::login($admin);
+        Auth::guard('admin')->login($admin);
         $request->session()->regenerate();
 
         return redirect()->route('admin.dashboard')->with('success', 'Plateforme initialisée. Espace super admin prêt.');

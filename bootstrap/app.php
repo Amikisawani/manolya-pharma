@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\EnsureTenant;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\UseAdminGuard;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -30,7 +31,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant' => EnsureTenant::class,
             'super_admin' => EnsureSuperAdmin::class,
             'deny_super_admin' => DenySuperAdminFromPharmacy::class,
+            'admin.guard' => UseAdminGuard::class,
         ]);
+
+        $middleware->redirectGuestsTo(function (Request $request) {
+            return $request->is('admin') || $request->is('admin/*')
+                ? route('admin.login')
+                : route('login');
+        });
 
         $middleware->web(append: [
             HandleInertiaRequests::class,

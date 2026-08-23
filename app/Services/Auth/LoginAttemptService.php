@@ -87,6 +87,11 @@ class LoginAttemptService
         return $candidate;
     }
 
+    public static function guardName(string $context): string
+    {
+        return $context === self::CONTEXT_ADMIN ? 'admin' : 'web';
+    }
+
     public function beginTwoFactorChallenge(
         Request $request,
         User $user,
@@ -94,9 +99,7 @@ class LoginAttemptService
         string $intendedRoute,
         string $context,
     ): RedirectResponse {
-        if (Auth::check()) {
-            Auth::logout();
-        }
+        Auth::guard(self::guardName($context))->logout();
 
         $request->session()->regenerate();
         $request->session()->put('login.id', $user->id);

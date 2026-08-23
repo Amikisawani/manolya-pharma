@@ -70,8 +70,8 @@ const submit = () => {
             class="mt-4 border px-3 py-2 text-sm text-[color:var(--mp-muted)]"
             style="border-color: var(--mp-line)"
         >
-            Session ouverte : {{ activeSession.name }} ({{ activeSession.context }}).
-            Se connecter ici remplacera cette session.
+            Session pharmacie ouverte : {{ activeSession.name }}.
+            Se reconnecter ici remplace uniquement la session pharmacie, pas l’admin.
         </div>
 
         <div v-if="status" class="mt-4 text-sm" style="color: var(--mp-success)">{{ status }}</div>

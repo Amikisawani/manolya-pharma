@@ -23,6 +23,11 @@ class User extends Authenticatable
     use SoftDeletes;
 
     /**
+     * Spatie roles stay on the web guard even when the user is logged into admin.
+     */
+    protected $guard_name = 'web';
+
+    /**
      * @var list<string>
      */
     protected $fillable = [

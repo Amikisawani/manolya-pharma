@@ -16,21 +16,19 @@ class AuthController extends Controller
 {
     public function create(): Response
     {
+        $user = Auth::guard('admin')->user();
+
         return Inertia::render('Admin/Auth/Login', [
-            'activeSession' => Auth::check() ? [
-                'name' => Auth::user()?->name,
-                'email' => Auth::user()?->email,
-                'context' => Auth::user()?->isSuperAdmin() ? 'admin' : 'pharmacie',
+            'activeSession' => $user ? [
+                'name' => $user->name,
+                'email' => $user->email,
+                'context' => 'admin',
             ] : null,
         ]);
     }
 
     public function store(LoginRequest $request, LoginAttemptService $attempts): RedirectResponse
     {
-        if (Auth::check()) {
-            Auth::logout();
-        }
-
         $user = $attempts->attempt($request, LoginAttemptService::CONTEXT_ADMIN);
 
         if ($user->hasTwoFactorEnabled()) {
@@ -43,7 +41,8 @@ class AuthController extends Controller
             );
         }
 
-        Auth::login($user, false);
+        Auth::guard('admin')->logout();
+        Auth::guard('admin')->login($user, false);
         $request->session()->regenerate();
         $request->session()->forget('url.intended');
 
@@ -52,12 +51,11 @@ class AuthController extends Controller
 
     public function destroy(Request $request, CashRegisterSessionService $sessions): RedirectResponse
     {
-        if ($message = $sessions->logoutBlockMessage($request->user())) {
+        if ($message = $sessions->logoutBlockMessage($request->user('admin'))) {
             return redirect()->route('admin.dashboard')->with('error', $message);
         }
 
-        Auth::logout();
-        $request->session()->invalidate();
+        Auth::guard('admin')->logout();
         $request->session()->regenerateToken();
 
         return redirect()->route('admin.login');

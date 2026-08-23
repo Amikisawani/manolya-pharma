@@ -29,7 +29,7 @@ class AppResetController extends Controller
     {
         $data = $request->validate([
             'confirmation' => ['required', 'in:REINITIALISER'],
-            'password' => ['required', 'current_password'],
+            'password' => ['required', 'current_password:admin'],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
             'new_password' => ['required', 'confirmed', Password::defaults()],
@@ -40,7 +40,8 @@ class AppResetController extends Controller
             'email' => $data['email'],
         ]);
 
-        Auth::logout();
+        Auth::guard('admin')->logout();
+        Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
@@ -51,7 +52,7 @@ class AppResetController extends Controller
             'pharmacy_name' => $data['pharmacy_name'],
         ]);
 
-        Auth::login($admin);
+        Auth::guard('admin')->login($admin);
         $request->session()->regenerate();
 
         return redirect()->route('admin.dashboard')->with('success', 'Application remise à zéro (données test effacées).');

@@ -25,13 +25,15 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('setup.create');
         }
 
+        $user = Auth::guard('web')->user();
+
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
-            'activeSession' => Auth::check() ? [
-                'name' => Auth::user()?->name,
-                'email' => Auth::user()?->email,
-                'context' => Auth::user()?->isSuperAdmin() ? 'admin' : 'pharmacie',
+            'activeSession' => $user ? [
+                'name' => $user->name,
+                'email' => $user->email,
+                'context' => 'pharmacie',
             ] : null,
         ]);
     }
@@ -41,10 +43,6 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request, LoginAttemptService $attempts): RedirectResponse
     {
-        if (Auth::check()) {
-            Auth::logout();
-        }
-
         $user = $attempts->attempt($request, LoginAttemptService::CONTEXT_PHARMACY);
 
         if ($user->hasTwoFactorEnabled()) {
@@ -57,7 +55,8 @@ class AuthenticatedSessionController extends Controller
             );
         }
 
-        Auth::login($user, $request->boolean('remember'));
+        Auth::guard('web')->logout();
+        Auth::guard('web')->login($user, $request->boolean('remember'));
         $request->session()->regenerate();
         $request->session()->forget('url.intended');
 
@@ -69,13 +68,11 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request, CashRegisterSessionService $sessions): RedirectResponse
     {
-        if ($message = $sessions->logoutBlockMessage($request->user())) {
+        if ($message = $sessions->logoutBlockMessage($request->user('web'))) {
             return back()->with('error', $message);
         }
 
         Auth::guard('web')->logout();
-
-        $request->session()->invalidate();
         $request->session()->regenerateToken();
 
         return redirect('/');

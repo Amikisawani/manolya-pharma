@@ -75,17 +75,17 @@ class TwoFactorController extends Controller
         $remember = $context === LoginAttemptService::CONTEXT_ADMIN
             ? false
             : (bool) $request->session()->pull('login.remember', false);
+        $guard = LoginAttemptService::guardName($context);
 
         $request->session()->forget(['login.id', 'login.remember', 'login.intended', 'login.context']);
 
-        Auth::login($user, $remember);
+        Auth::guard($guard)->login($user, $remember);
         $request->session()->regenerate();
         $request->session()->forget('url.intended');
 
         if ($context === LoginAttemptService::CONTEXT_ADMIN) {
             if (! $user->isSuperAdmin()) {
-                Auth::logout();
-                $request->session()->invalidate();
+                Auth::guard('admin')->logout();
                 $request->session()->regenerateToken();
 
                 return redirect()->route('admin.login');
