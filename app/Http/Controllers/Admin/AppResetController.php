@@ -8,6 +8,7 @@ use App\Services\ManolyaBootstrap;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -44,6 +45,8 @@ class AppResetController extends Controller
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+        Cookie::queue(Cookie::forget(config('session.pharmacy_cookie'), config('session.path'), config('session.domain')));
+        Cookie::queue(Cookie::forget(config('session.admin_cookie'), config('session.path'), config('session.domain')));
 
         $admin = $bootstrap->factoryReset([
             'name' => $data['name'],

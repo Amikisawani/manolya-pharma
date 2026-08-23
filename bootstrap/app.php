@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureTenant;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\UseAdminGuard;
+use App\Http\Middleware\UsePortalSessionCookie;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -39,6 +40,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 ? route('admin.login')
                 : route('login');
         });
+
+        $middleware->web(prepend: [
+            UsePortalSessionCookie::class,
+        ]);
 
         $middleware->web(append: [
             HandleInertiaRequests::class,

@@ -35,8 +35,8 @@ const submit = () => {
                 class="mt-4 border px-3 py-2 text-sm"
                 style="border-color: #3a463f; color: #9aaba2"
             >
-                Session admin ouverte : {{ activeSession.name }}.
-                Se reconnecter ici remplace uniquement la session admin, pas la pharmacie.
+                Session admin : {{ activeSession.name }}.
+                L’espace pharmacie n’est pas concerné.
             </div>
 
             <form class="mt-8 space-y-4" @submit.prevent="submit">

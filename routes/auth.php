@@ -36,7 +36,7 @@ Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('lo
 Route::post('login', [AuthenticatedSessionController::class, 'store'])
     ->middleware('throttle:10,1');
 
-Route::middleware('auth')->group(function () {
+Route::middleware('auth:web')->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
 

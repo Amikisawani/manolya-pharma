@@ -107,7 +107,11 @@ class LoginAttemptService
         $request->session()->put('login.intended', route($intendedRoute));
         $request->session()->put('login.context', $context);
 
-        return redirect()->route('two-factor.challenge');
+        return redirect()->route(
+            $context === self::CONTEXT_ADMIN
+                ? 'admin.two-factor.challenge'
+                : 'two-factor.challenge'
+        );
     }
 
     public function normalizedEmail(Request $request): string

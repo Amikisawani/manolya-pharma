@@ -54,6 +54,11 @@ Route::prefix('admin')->name('admin.')->middleware('admin.guard')->group(functio
     Route::post('login', [AdminAuthController::class, 'store'])
         ->middleware('throttle:10,1')
         ->name('login.store');
+    Route::get('two-factor/challenge', [TwoFactorController::class, 'challenge'])
+        ->name('two-factor.challenge');
+    Route::post('two-factor/challenge', [TwoFactorController::class, 'verify'])
+        ->middleware('throttle:5,1')
+        ->name('two-factor.verify');
 
     Route::middleware(['auth:admin', 'super_admin'])->group(function () {
         Route::post('logout', [AdminAuthController::class, 'destroy'])->name('logout');
@@ -77,12 +82,12 @@ Route::post('/two-factor/challenge', [TwoFactorController::class, 'verify'])
     ->middleware('throttle:5,1')
     ->name('two-factor.verify');
 
-Route::middleware('auth')->group(function () {
+Route::middleware('auth:web')->group(function () {
     Route::get('/two-factor/setup', [TwoFactorController::class, 'setup'])->name('two-factor.setup');
     Route::post('/two-factor/enable', [TwoFactorController::class, 'enable'])->name('two-factor.enable');
 });
 
-Route::middleware(['auth', 'tenant', 'deny_super_admin'])->group(function () {
+Route::middleware(['auth:web', 'tenant', 'deny_super_admin'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

@@ -19,11 +19,7 @@ class TwoFactorController extends Controller
     public function challenge(Request $request): Response|RedirectResponse
     {
         if (! $request->session()->has('login.id')) {
-            $context = $request->session()->get('login.context');
-
-            return redirect()->route(
-                $context === LoginAttemptService::CONTEXT_ADMIN ? 'admin.login' : 'login'
-            );
+            return redirect()->route($this->loginRoute($request));
         }
 
         return Inertia::render('Auth/TwoFactorChallenge');
@@ -37,7 +33,7 @@ class TwoFactorController extends Controller
 
         $userId = $request->session()->get('login.id');
         if (! $userId) {
-            return redirect()->route('login');
+            return redirect()->route($this->loginRoute($request));
         }
 
         $throttleKey = 'two-factor:'.$userId.'|'.$request->ip();
@@ -55,7 +51,7 @@ class TwoFactorController extends Controller
         if ($user === null || ! $user->is_active) {
             $request->session()->forget(['login.id', 'login.remember', 'login.intended', 'login.context']);
 
-            return redirect()->route('login');
+            return redirect()->route($this->loginRoute($request));
         }
 
         $code = trim($request->string('code')->toString());
@@ -171,5 +167,16 @@ class TwoFactorController extends Controller
         ])->save();
 
         return true;
+    }
+
+    private function loginRoute(Request $request): string
+    {
+        $context = $request->session()->get('login.context');
+
+        if ($context === LoginAttemptService::CONTEXT_ADMIN || $request->routeIs('admin.*')) {
+            return 'admin.login';
+        }
+
+        return 'login';
     }
 }

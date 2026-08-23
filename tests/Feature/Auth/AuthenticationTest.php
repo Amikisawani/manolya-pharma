@@ -207,12 +207,18 @@ class AuthenticationTest extends TestCase
 
         $this->get('/login')
             ->assertOk()
+            ->assertDontSee('Se connecter ici remplacera', false)
+            ->assertDontSee($admin->name)
             ->assertInertia(fn ($page) => $page
                 ->component('Auth/Login')
                 ->where('activeSession', null)
+                ->where('auth.user', null)
             );
 
         $this->get('/')
+            ->assertRedirect(route('login'));
+
+        $this->get('/dashboard')
             ->assertRedirect(route('login'));
     }
 

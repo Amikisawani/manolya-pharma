@@ -14,8 +14,13 @@ class UseAdminGuard
      */
     public function handle(Request $request, Closure $next): Response
     {
+        $previous = Auth::getDefaultDriver();
         Auth::shouldUse('admin');
 
-        return $next($request);
+        try {
+            return $next($request);
+        } finally {
+            Auth::shouldUse($previous);
+        }
     }
 }
