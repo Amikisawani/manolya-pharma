@@ -122,7 +122,7 @@ class StorefrontCatalog
             'name' => $tenant->name ?: (string) config('manolya.bootstrap.pharmacy_name'),
             'tagline' => (string) ($storefront['tagline'] ?? 'Officine de confiance à Kinshasa'),
             'city' => (string) ($storefront['city'] ?? 'Kinshasa'),
-            'country' => (string) ($storefront['country'] ?? 'République du Congo'),
+            'country' => (string) ($storefront['country'] ?? 'République démocratique du Congo'),
             'phone' => (string) ($storefront['phone'] ?? ''),
             'email' => (string) ($storefront['email'] ?? ''),
             'address' => (string) ($storefront['address'] ?? 'Kinshasa'),

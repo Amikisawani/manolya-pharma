@@ -31,7 +31,7 @@ return [
     'storefront' => [
         'tagline' => env('STOREFRONT_TAGLINE', 'Officine de confiance à Kinshasa'),
         'city' => env('STOREFRONT_CITY', 'Kinshasa'),
-        'country' => env('STOREFRONT_COUNTRY', 'République du Congo'),
+        'country' => env('STOREFRONT_COUNTRY', 'République démocratique du Congo'),
         'phone' => env('STOREFRONT_PHONE', ''),
         'email' => env('STOREFRONT_EMAIL', env('SETUP_PHARMACY_OWNER_EMAIL', 'owner@manolya-pharma.site')),
         'address' => env('STOREFRONT_ADDRESS', 'Kinshasa'),

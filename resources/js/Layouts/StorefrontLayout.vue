@@ -85,7 +85,7 @@ const isActive = (match: string) =>
                         les commandes à distance arrivent bientôt.
                     </p>
                 </div>
-                <p class="text-xs text-[color:var(--mp-faint)]">Devise affichée en Fc · Kinshasa, République du Congo</p>
+                <p class="text-xs text-[color:var(--mp-faint)]">Devise affichée en Fc · Kinshasa, République démocratique du Congo</p>
             </div>
         </footer>
     </div>
