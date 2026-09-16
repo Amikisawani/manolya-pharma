@@ -70,14 +70,7 @@ class StorefrontController extends Controller
         $products = $tenant
             ? Product::query()
                 ->with('category:id,name')
-                ->when($query !== '', function ($builder) use ($query) {
-                    $like = '%'.mb_strtolower($query).'%';
-                    $builder->where(function ($inner) use ($like) {
-                        $inner->whereRaw('lower(commercial_name) like ?', [$like])
-                            ->orWhereRaw('lower(coalesce(generic_name, \'\')) like ?', [$like])
-                            ->orWhereRaw('lower(sku) like ?', [$like]);
-                    });
-                })
+                ->when($query !== '', fn ($builder) => $this->catalog->applyProductSearch($builder, $query))
                 ->when($categoryId !== '', fn ($builder) => $builder->where('category_id', $categoryId))
                 ->orderBy('commercial_name')
                 ->paginate(24)

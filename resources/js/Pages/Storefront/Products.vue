@@ -86,7 +86,12 @@ const apply = () => {
                 </article>
             </div>
             <p v-else class="mt-10 text-sm text-[color:var(--mp-muted)]">
-                Aucun produit public pour le moment. Le catalogue se synchronise avec le stock de l’officine.
+                <template v-if="filters.q || filters.category">
+                    Aucun produit ne correspond à cette recherche. Essayez un autre nom, une DCI, ou toutes les catégories.
+                </template>
+                <template v-else>
+                    Aucun produit public pour le moment. Le catalogue se synchronise avec le stock de l’officine.
+                </template>
             </p>
 
             <nav v-if="products && products.links.length > 3" class="mt-8 flex flex-wrap gap-2 text-sm">

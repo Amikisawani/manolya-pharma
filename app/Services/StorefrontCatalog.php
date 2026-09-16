@@ -6,9 +6,28 @@ use App\Domain\Shared\Formatting\MoneyFormatter;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Tenant;
+use Illuminate\Database\Eloquent\Builder;
 
 class StorefrontCatalog
 {
+    /**
+     * @var array<string, string>
+     */
+    private const FOLD_MAP = [
+        'à' => 'a', 'á' => 'a', 'â' => 'a', 'ä' => 'a', 'ã' => 'a',
+        'è' => 'e', 'é' => 'e', 'ê' => 'e', 'ë' => 'e',
+        'ì' => 'i', 'í' => 'i', 'î' => 'i', 'ï' => 'i',
+        'ò' => 'o', 'ó' => 'o', 'ô' => 'o', 'ö' => 'o',
+        'ù' => 'u', 'ú' => 'u', 'û' => 'u', 'ü' => 'u',
+        'ç' => 'c', 'ñ' => 'n',
+        'À' => 'a', 'Á' => 'a', 'Â' => 'a', 'Ä' => 'a',
+        'È' => 'e', 'É' => 'e', 'Ê' => 'e', 'Ë' => 'e',
+        'Ì' => 'i', 'Í' => 'i', 'Î' => 'i', 'Ï' => 'i',
+        'Ò' => 'o', 'Ó' => 'o', 'Ô' => 'o', 'Ö' => 'o',
+        'Ù' => 'u', 'Ú' => 'u', 'Û' => 'u', 'Ü' => 'u',
+        'Ç' => 'c',
+    ];
+
     public function __construct(private readonly MoneyFormatter $money) {}
 
     public function bindPharmacyTenant(): ?Tenant
@@ -38,6 +57,41 @@ class StorefrontCatalog
             'category' => $product->category?->name,
             'price' => $this->money->format((string) $product->sale_price),
         ];
+    }
+
+    public function applyProductSearch(Builder $builder, string $query): void
+    {
+        $needle = '%'.$this->escapeLike(strtr(mb_strtolower(trim($query)), self::FOLD_MAP)).'%';
+
+        if ($needle === '%%') {
+            return;
+        }
+
+        $name = $this->foldedSql('commercial_name');
+        $generic = $this->foldedSql("coalesce(generic_name, '')");
+        $sku = $this->foldedSql('sku');
+
+        $builder->where(function (Builder $inner) use ($needle, $name, $generic, $sku): void {
+            $inner->whereRaw($name.' like ?', [$needle])
+                ->orWhereRaw($generic.' like ?', [$needle])
+                ->orWhereRaw($sku.' like ?', [$needle]);
+        });
+    }
+
+    private function foldedSql(string $expression): string
+    {
+        $sql = 'lower('.$expression.')';
+
+        foreach (['é' => 'e', 'è' => 'e', 'ê' => 'e', 'à' => 'a', 'ç' => 'c', 'ô' => 'o', 'î' => 'i', 'É' => 'e', 'È' => 'e', 'À' => 'a', 'Ç' => 'c'] as $from => $to) {
+            $sql = "replace({$sql}, '{$from}', '{$to}')";
+        }
+
+        return $sql;
+    }
+
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['%', '_'], '', $value);
     }
 
     /**

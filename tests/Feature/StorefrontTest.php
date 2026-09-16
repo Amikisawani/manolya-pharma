@@ -54,6 +54,14 @@ class StorefrontTest extends TestCase
                 ->where('products.data.0.name', 'Paracétamol 500mg')
                 ->missing('products.data.0.purchase_price')
             );
+
+        $this->get('/produits?q=paracetamol')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Storefront/Products')
+                ->where('products.data.0.name', 'Paracétamol 500mg')
+                ->has('products.data', 1)
+            );
     }
 
     public function test_contact_form_accepts_a_message(): void
