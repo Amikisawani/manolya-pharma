@@ -13,7 +13,13 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('/');
 
-        $response->assertRedirect();
-        $this->followRedirects($response)->assertOk();
+        if ($response->isRedirect()) {
+            $response->assertRedirect();
+            $this->followRedirects($response)->assertOk();
+
+            return;
+        }
+
+        $response->assertOk();
     }
 }

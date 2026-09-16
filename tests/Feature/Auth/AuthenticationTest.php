@@ -216,7 +216,8 @@ class AuthenticationTest extends TestCase
             );
 
         $this->get('/')
-            ->assertRedirect(route('login'));
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Storefront/Home'));
 
         $this->get('/dashboard')
             ->assertRedirect(route('login'));

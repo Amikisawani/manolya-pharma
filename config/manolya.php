@@ -22,4 +22,20 @@ return [
         'site_code' => env('SETUP_SITE_CODE', 'SITE-01'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Vitrine publique (hors application interne)
+    |--------------------------------------------------------------------------
+    */
+
+    'storefront' => [
+        'tagline' => env('STOREFRONT_TAGLINE', 'Officine de confiance à Kinshasa'),
+        'city' => env('STOREFRONT_CITY', 'Kinshasa'),
+        'country' => env('STOREFRONT_COUNTRY', 'République du Congo'),
+        'phone' => env('STOREFRONT_PHONE', ''),
+        'email' => env('STOREFRONT_EMAIL', env('SETUP_PHARMACY_OWNER_EMAIL', 'owner@manolya-pharma.site')),
+        'address' => env('STOREFRONT_ADDRESS', 'Kinshasa'),
+        'hours' => env('STOREFRONT_HOURS', 'Lundi — Samedi, 8h — 19h'),
+    ],
+
 ];

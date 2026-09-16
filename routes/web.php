@@ -28,19 +28,16 @@ use App\Http\Controllers\Setup\SetupController;
 use App\Http\Controllers\Stock\BatchController;
 use App\Http\Controllers\Stock\StockAdjustmentController;
 use App\Http\Controllers\Stock\StockMovementController;
-use App\Services\ManolyaBootstrap;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Storefront\StorefrontController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function (ManolyaBootstrap $bootstrap) {
-    if ($bootstrap->needsSetup()) {
-        return redirect()->route('setup.create');
-    }
-
-    return Auth::guard('web')->check()
-        ? redirect()->route('dashboard')
-        : redirect()->route('login');
-});
+Route::get('/', [StorefrontController::class, 'home'])->name('storefront.home');
+Route::get('/a-propos', [StorefrontController::class, 'about'])->name('storefront.about');
+Route::get('/produits', [StorefrontController::class, 'products'])->name('storefront.products');
+Route::get('/contact', [StorefrontController::class, 'contact'])->name('storefront.contact');
+Route::post('/contact', [StorefrontController::class, 'sendContact'])
+    ->middleware('throttle:5,1')
+    ->name('storefront.contact.store');
 
 Route::middleware('guest')->group(function () {
     Route::get('/setup', [SetupController::class, 'create'])->name('setup.create');
