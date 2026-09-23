@@ -114,6 +114,7 @@ Prod : pas de bind-mount du code, monter `storage` + backups, `APP_DEBUG=false`.
 - [ ] Worker + scheduler actifs
 - [ ] Parcours : ouvrir caisse → vente → ticket → clôture
 - [ ] Parcours : commande → réception → inventaire
+- [ ] Factures d’achat 22/09/2026 : `php artisan manolya:import-invoice-purchases --tenant=manolya-kinshasa` (voir `docs/ops/invoice-purchases.md`)
 - [ ] E-mails sortants testés
 
 ## Rollback rapide
