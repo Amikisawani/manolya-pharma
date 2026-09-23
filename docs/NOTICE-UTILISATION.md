@@ -53,9 +53,9 @@ Si un bouton est absent, c’est en général une question de **permission** —
 
 ### Vendre
 1. Rechercher un produit (nom, SKU, code-barres) — recherche dynamique.
-2. Ajouter au panier, ajuster la quantité.
-3. Choisir le(s) mode(s) de paiement : espèces, carte, Mobile Money.
-4. Valider → redirection vers la fiche vente / facture.
+2. Ajouter au panier, ajuster la quantité et le **montant** (le nouveau montant remplace le prix catalogue pour cette vente).
+3. Choisir le mode de paiement (espèces, carte, Mobile Money).
+4. **Encaisser** enregistre la vente — le montant saisi est celui qui est facturé.
 
 ### Stock à la vente
 - Le système prélève automatiquement sur les **lots** (stratégie FEFO / FIFO du produit).

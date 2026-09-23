@@ -29,7 +29,7 @@ type ProductHit = {
     sale_price: string | number;
 };
 
-type CartLine = ProductHit & { quantity: number; discount_amount: number };
+type CartLine = ProductHit & { quantity: number; discount_amount: number; unit_price: number };
 
 const query = ref('');
 const results = ref<ProductHit[]>([]);
@@ -43,8 +43,18 @@ let searchSeq = 0;
 
 const sessionOpen = computed(() => !!props.openSession);
 
+const lineUnitPrice = (line: CartLine): number => {
+    const price = Number(line.unit_price);
+    return Number.isFinite(price) && price >= 0 ? price : 0;
+};
+
+const lineQuantity = (line: CartLine): number => {
+    const qty = Number(line.quantity);
+    return Number.isFinite(qty) && qty > 0 ? qty : 1;
+};
+
 const subtotal = computed(() =>
-    cart.value.reduce((sum, line) => sum + Number(line.sale_price) * line.quantity - line.discount_amount, 0),
+    cart.value.reduce((sum, line) => sum + lineUnitPrice(line) * lineQuantity(line) - Number(line.discount_amount || 0), 0),
 );
 
 const form = useForm({
@@ -107,16 +117,21 @@ const addToCart = (product: ProductHit) => {
     if (!sessionOpen.value) return;
     const existing = cart.value.find((l) => l.id === product.id);
     if (existing) {
-        existing.quantity += 1;
+        existing.quantity = lineQuantity(existing) + 1;
     } else {
-        cart.value.push({ ...product, quantity: 1, discount_amount: 0 });
+        cart.value.push({
+            ...product,
+            quantity: 1,
+            discount_amount: 0,
+            unit_price: Number(product.sale_price) || 0,
+        });
     }
 };
 
 const bumpQty = (id: string, delta: number) => {
     const line = cart.value.find((l) => l.id === id);
     if (!line) return;
-    line.quantity = Math.max(1, line.quantity + delta);
+    line.quantity = Math.max(1, lineQuantity(line) + delta);
 };
 
 const removeLine = (id: string) => {
@@ -127,9 +142,9 @@ const checkout = () => {
     if (!sessionOpen.value) return;
     form.lines = cart.value.map((l) => ({
         product_id: l.id,
-        quantity: l.quantity,
-        unit_price: Number(l.sale_price),
-        discount_amount: l.discount_amount,
+        quantity: lineQuantity(l),
+        unit_price: lineUnitPrice(l),
+        discount_amount: Number(l.discount_amount || 0),
     }));
     form.payments = [
         {
@@ -283,15 +298,34 @@ const due = computed(() => Math.max(subtotal.value - Number(form.discount_total)
                     <div v-for="line in cart" :key="line.id" class="mp-row">
                         <div class="min-w-0 flex-1">
                             <div class="truncate font-medium">{{ line.commercial_name }}</div>
-                            <MoneyAmount :amount="line.sale_price" size="sm" />
-                            <div class="mt-2 flex items-center gap-2">
-                                <button class="mp-btn mp-btn-ghost px-3" type="button" @click="bumpQty(line.id, -1)">−</button>
-                                <input v-model.number="line.quantity" type="number" min="1" class="mp-input w-20 text-center" />
-                                <button class="mp-btn mp-btn-ghost px-3" type="button" @click="bumpQty(line.id, 1)">+</button>
-                                <button class="text-xs text-[color:var(--mp-danger)]" type="button" @click="removeLine(line.id)">
-                                    Retirer
-                                </button>
+                            <div class="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
+                                <div>
+                                    <label class="mp-metric-label" :for="`line-amount-${line.id}`">Montant (Fc)</label>
+                                    <input
+                                        :id="`line-amount-${line.id}`"
+                                        v-model.number="line.unit_price"
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        inputmode="decimal"
+                                        class="mp-input mt-1 tabular-nums"
+                                    />
+                                </div>
+                                <div class="flex items-center gap-2 pb-0.5">
+                                    <button class="mp-btn mp-btn-ghost px-3" type="button" @click="bumpQty(line.id, -1)">−</button>
+                                    <input
+                                        v-model.number="line.quantity"
+                                        type="number"
+                                        min="1"
+                                        class="mp-input w-16 text-center"
+                                        aria-label="Quantité"
+                                    />
+                                    <button class="mp-btn mp-btn-ghost px-3" type="button" @click="bumpQty(line.id, 1)">+</button>
+                                </div>
                             </div>
+                            <button class="mt-2 text-xs text-[color:var(--mp-danger)]" type="button" @click="removeLine(line.id)">
+                                Retirer
+                            </button>
                         </div>
                     </div>
                     <p v-if="!cart.length" class="py-8 text-sm text-[color:var(--mp-muted)]">Panier vide</p>
