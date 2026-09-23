@@ -28,7 +28,8 @@ php artisan manolya:import-invoice-purchases --tenant=manolya-kinshasa --warehou
 - Prix de vente **absent des factures** : `round(prix_achat × 1.4)` (à ajuster ensuite dans le catalogue).
 - Lignes à coût 0 (gratuits / OCR) : produit + stock quand même ; le prix de vente est repris d’une ligne payée du même nom si elle existe.
 - Dates de péremption absentes : placeholder **2027-09-22**. À corriger lot par lot dès que les dates réelles sont connues.
-- Relancer la commande est **idempotent** (lots déjà présents ignorés).
+- Relancer la commande est **idempotent** si le lot a déjà du stock.
+- Si un lot `ACH-*` existe avec **quantité 0** (import incomplet), un second passage **réinjecte la Qté facture** — c’est la colonne Quantité / Qté des bons (pas le n° de ligne).
 
 ## Après import
 

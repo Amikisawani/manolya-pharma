@@ -80,6 +80,37 @@ class ImportInvoicePurchasesTest extends TestCase
         $this->assertSame(4, StockMovement::query()->where('type', StockMovement::TYPE_IN_PURCHASE)->where('notes', 'like', 'Facture%')->count());
     }
 
+    public function test_empty_existing_lots_are_refilled_from_invoice_qty(): void
+    {
+        $this->seed();
+
+        $this->artisan('manolya:import-invoice-purchases', [
+            '--tenant' => 'manolya-kinshasa',
+            '--file' => base_path('tests/Fixtures/invoice-purchases-sample.json'),
+        ])->assertSuccessful();
+
+        $lots = Batch::query()->where('lot_number', 'like', 'ACH-%')->get();
+        $this->assertNotEmpty($lots);
+
+        foreach ($lots as $lot) {
+            $lot->quantity_on_hand = 0;
+            $lot->status = Batch::STATUS_DEPLETED;
+            $lot->save();
+        }
+
+        $this->artisan('manolya:import-invoice-purchases', [
+            '--tenant' => 'manolya-kinshasa',
+            '--file' => base_path('tests/Fixtures/invoice-purchases-sample.json'),
+        ])->assertSuccessful();
+
+        $this->assertEqualsWithDelta(3, (float) Batch::query()
+            ->whereHas('product', fn ($q) => $q->where('commercial_name', 'like', 'Ambroxol%'))
+            ->sum('quantity_on_hand'), 0.001);
+        $this->assertEqualsWithDelta(6, (float) Batch::query()
+            ->whereHas('product', fn ($q) => $q->where('commercial_name', 'like', 'Start-%'))
+            ->sum('quantity_on_hand'), 0.001);
+    }
+
     public function test_dry_run_writes_nothing(): void
     {
         $this->seed();

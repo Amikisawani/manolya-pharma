@@ -49,6 +49,7 @@ final class InvoicePurchaseImporter
      *     products_created: int,
      *     products_reused: int,
      *     batches_created: int,
+     *     batches_synced: int,
      *     batches_skipped: int,
      *     lines_skipped: int,
      *     suppliers_created: int,
@@ -87,6 +88,7 @@ final class InvoicePurchaseImporter
             'products_created' => 0,
             'products_reused' => 0,
             'batches_created' => 0,
+            'batches_synced' => 0,
             'batches_skipped' => 0,
             'lines_skipped' => 0,
             'suppliers_created' => 0,
@@ -186,10 +188,22 @@ final class InvoicePurchaseImporter
                         ->where('lot_number', $lotNumber)
                         ->first();
 
+                    $notes = trim("Facture {$invoice} — {$supplierName}".($pack !== '' ? " ({$pack})" : ''));
+
                     if ($existingLot) {
+                        $filled = $this->fillEmptyLot(
+                            $existingLot,
+                            $qty,
+                            $unitCost,
+                            $userId,
+                            $notes,
+                            $purchasedAt,
+                        );
+
                         return [
                             'product_created' => false,
                             'batch_created' => false,
+                            'batch_synced' => $filled,
                             'supplier_created' => $supplier->wasRecentlyCreated,
                         ];
                     }
@@ -207,28 +221,24 @@ final class InvoicePurchaseImporter
                         'status' => Batch::STATUS_ACTIVE,
                     ]);
 
-                    $this->stockMutator->mutate([
-                        'tenant_id' => $tenant->id,
-                        'batch_id' => $batch->id,
-                        'type' => StockMovement::TYPE_IN_PURCHASE,
-                        'quantity' => $qty,
-                        'unit_cost' => $unitCost,
-                        'reference_type' => self::class,
-                        'reference_id' => null,
-                        'user_id' => $userId,
-                        'notes' => trim("Facture {$invoice} — {$supplierName}".($pack !== '' ? " ({$pack})" : '')),
-                        'occurred_at' => $purchasedAt,
-                    ]);
+                    $this->receivePurchase($batch, $qty, $unitCost, $userId, $notes, $purchasedAt);
 
                     return [
                         'product_created' => $product->wasRecentlyCreated,
                         'batch_created' => true,
+                        'batch_synced' => false,
                         'supplier_created' => $supplier->wasRecentlyCreated,
                     ];
                 });
 
                 $result['product_created'] ? $stats['products_created']++ : $stats['products_reused']++;
-                $result['batch_created'] ? $stats['batches_created']++ : $stats['batches_skipped']++;
+                if ($result['batch_created']) {
+                    $stats['batches_created']++;
+                } elseif ($result['batch_synced']) {
+                    $stats['batches_synced']++;
+                } else {
+                    $stats['batches_skipped']++;
+                }
                 if ($result['supplier_created']) {
                     $stats['suppliers_created']++;
                 }
@@ -269,6 +279,46 @@ final class InvoicePurchaseImporter
         }
 
         return $warehouse;
+    }
+
+    private function fillEmptyLot(
+        Batch $batch,
+        string $qty,
+        string $unitCost,
+        ?string $userId,
+        string $notes,
+        Carbon $purchasedAt,
+    ): bool {
+        $onHand = $this->normalizeQuantity($batch->quantity_on_hand ?? 0);
+        if (bccomp($onHand, '0', 3) > 0) {
+            return false;
+        }
+
+        $this->receivePurchase($batch, $qty, $unitCost, $userId, $notes.' — rattrapage Qté facture', $purchasedAt);
+
+        return true;
+    }
+
+    private function receivePurchase(
+        Batch $batch,
+        string $qty,
+        string $unitCost,
+        ?string $userId,
+        string $notes,
+        Carbon $purchasedAt,
+    ): void {
+        $this->stockMutator->mutate([
+            'tenant_id' => $batch->tenant_id,
+            'batch_id' => $batch->id,
+            'type' => StockMovement::TYPE_IN_PURCHASE,
+            'quantity' => $qty,
+            'unit_cost' => $unitCost,
+            'reference_type' => self::class,
+            'reference_id' => null,
+            'user_id' => $userId,
+            'notes' => $notes,
+            'occurred_at' => $purchasedAt,
+        ]);
     }
 
     private function resolveUserId(Tenant $tenant, mixed $userId): ?string

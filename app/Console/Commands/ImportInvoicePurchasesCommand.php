@@ -65,11 +65,12 @@ class ImportInvoicePurchasesCommand extends Command
         }
 
         $this->table(
-            ['Produits créés', 'Produits réutilisés', 'Lots créés', 'Lots déjà présents', 'Lignes ignorées', 'Fournisseurs créés'],
+            ['Produits créés', 'Produits réutilisés', 'Lots créés', 'Lots réalimentés', 'Lots déjà OK', 'Lignes ignorées', 'Fournisseurs créés'],
             [[
                 $stats['products_created'],
                 $stats['products_reused'],
                 $stats['batches_created'],
+                $stats['batches_synced'] ?? 0,
                 $stats['batches_skipped'],
                 $stats['lines_skipped'],
                 $stats['suppliers_created'],
