@@ -376,7 +376,8 @@ final class InvoicePurchaseImporter
 
     private function uniqueSku(Tenant $tenant, string $name): string
     {
-        $base = Str::upper(Str::slug($name, '-'));
+        $normalized = str_replace(['/', '\\'], '-', $name);
+        $base = Str::upper(Str::slug($normalized, '-'));
         $base = Str::limit($base !== '' ? $base : 'MED', 48, '');
 
         $sku = $base;
