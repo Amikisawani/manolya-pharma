@@ -1,0 +1,43 @@
+[
+    {"_meta": true, "total_lines": 4},
+    {
+        "supplier": "Compagnon EPVG",
+        "invoice": "3308979555",
+        "name": "Ambroxol 15mg/5ml 100ml enfant",
+        "pack": "FLC",
+        "qty": 1,
+        "unit_cost": 4913.52,
+        "line_total": 4913.52,
+        "category": "Respiratoire"
+    },
+    {
+        "supplier": "Avril Pharma Depot Gombe",
+        "invoice": "SDKAGS26INS0475750",
+        "name": "Ambroxol 15mg/5ml 100ml enfant",
+        "pack": "FLC",
+        "qty": 2,
+        "unit_cost": 5000,
+        "line_total": 10000,
+        "category": "Respiratoire"
+    },
+    {
+        "supplier": "Unique Depot Pharmaceutique",
+        "invoice": "KSO126INS1169655",
+        "name": "Start-180mg (artésunate) injectable B/1 kit",
+        "pack": "BTE",
+        "qty": 1,
+        "unit_cost": 0,
+        "line_total": 0,
+        "category": "Antipaludéens"
+    },
+    {
+        "supplier": "Unique Depot Pharmaceutique",
+        "invoice": "KSO126INS1169655",
+        "name": "Start-180mg (artésunate) injectable B/1 kit",
+        "pack": "BTE",
+        "qty": 5,
+        "unit_cost": 9400,
+        "line_total": 47000,
+        "category": "Antipaludéens"
+    }
+]
