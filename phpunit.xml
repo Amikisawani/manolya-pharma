@@ -38,5 +38,6 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="SALES_ENFORCE_STOCK" value="false"/>
+        <env name="SALE_INVOICE_MARKUP" value="1.2"/>
     </php>
 </phpunit>

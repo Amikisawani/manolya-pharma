@@ -12,7 +12,7 @@ class ImportInvoicePurchasesCommand extends Command
         {--tenant= : Tenant UUID or slug}
         {--file= : Chemin du JSON des lignes de facture}
         {--warehouse= : Code ou UUID du dépôt}
-        {--markup=1.4 : Coefficient prix de vente / prix d’achat}
+        {--markup= : Coefficient prix de vente / prix unitaire facture (défaut 1.2)}
         {--expires= : Date de péremption placeholder (YYYY-MM-DD)}
         {--purchased-at= : Date d’achat (YYYY-MM-DD)}
         {--dry-run : Compte sans écrire}';
@@ -48,7 +48,7 @@ class ImportInvoicePurchasesCommand extends Command
 
         try {
             $stats = $importer->import($path, $tenants->first(), [
-                'markup' => $this->option('markup'),
+                'markup' => $this->option('markup') ?: config('manolya.sales.invoice_markup', InvoicePurchaseImporter::DEFAULT_MARKUP),
                 'expires_at' => $this->option('expires'),
                 'purchased_at' => $this->option('purchased-at'),
                 'dry_run' => (bool) $this->option('dry-run'),
@@ -65,10 +65,11 @@ class ImportInvoicePurchasesCommand extends Command
         }
 
         $this->table(
-            ['Produits créés', 'Produits réutilisés', 'Lots créés', 'Lots réalimentés', 'Lots déjà OK', 'Lignes ignorées', 'Fournisseurs créés'],
+            ['Produits créés', 'Produits réutilisés', 'Prix recalculés', 'Lots créés', 'Lots réalimentés', 'Lots déjà OK', 'Lignes ignorées', 'Fournisseurs créés'],
             [[
                 $stats['products_created'],
                 $stats['products_reused'],
+                $stats['products_repriced'] ?? 0,
                 $stats['batches_created'],
                 $stats['batches_synced'] ?? 0,
                 $stats['batches_skipped'],

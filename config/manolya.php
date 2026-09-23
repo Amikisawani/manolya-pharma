@@ -15,6 +15,7 @@ return [
 
     'sales' => [
         'enforce_stock' => filter_var(env('SALES_ENFORCE_STOCK', false), FILTER_VALIDATE_BOOLEAN),
+        'invoice_markup' => (float) env('SALE_INVOICE_MARKUP', 1.2),
     ],
 
     /*

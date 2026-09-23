@@ -21,7 +21,7 @@ final class InvoicePurchaseImporter
 {
     public const DEFAULT_DATASET = 'manolya_invoices_2026-09-22.json';
 
-    public const DEFAULT_MARKUP = 1.4;
+    public const DEFAULT_MARKUP = 1.2;
 
     public const DEFAULT_PURCHASED_AT = '2026-09-22';
 
@@ -48,6 +48,7 @@ final class InvoicePurchaseImporter
      * @return array{
      *     products_created: int,
      *     products_reused: int,
+     *     products_repriced: int,
      *     batches_created: int,
      *     batches_synced: int,
      *     batches_skipped: int,
@@ -68,7 +69,7 @@ final class InvoicePurchaseImporter
             throw new InvalidArgumentException('Le fichier JSON est invalide.');
         }
 
-        $markup = (float) ($options['markup'] ?? self::DEFAULT_MARKUP);
+        $markup = (float) ($options['markup'] ?? config('manolya.sales.invoice_markup', self::DEFAULT_MARKUP));
         if ($markup <= 0) {
             throw new InvalidArgumentException('Le coefficient de marge doit être supérieur à 0.');
         }
@@ -87,6 +88,7 @@ final class InvoicePurchaseImporter
         $stats = [
             'products_created' => 0,
             'products_reused' => 0,
+            'products_repriced' => 0,
             'batches_created' => 0,
             'batches_synced' => 0,
             'batches_skipped' => 0,
@@ -95,7 +97,7 @@ final class InvoicePurchaseImporter
             'errors' => [],
             'warnings' => [
                 "Péremption facture absente : lots créés avec date fictive {$expiresAt} (à corriger dès que les dates réelles sont connues).",
-                'Prix de vente estimé = prix d’achat × '.rtrim(rtrim(number_format($markup, 2, '.', ''), '0'), '.').' (arrondi à l’unité).',
+                'Prix de vente = prix unitaire facture × '.rtrim(rtrim(number_format($markup, 2, '.', ''), '0'), '.').' (arrondi à l’unité).',
             ],
         ];
 
@@ -168,7 +170,7 @@ final class InvoicePurchaseImporter
                         ['tenant_id' => $tenant->id, 'name' => $categoryName],
                     );
 
-                    $product = $this->matchOrCreateProduct(
+                    $matched = $this->matchOrCreateProduct(
                         $tenant,
                         $name,
                         $category->id,
@@ -177,6 +179,7 @@ final class InvoicePurchaseImporter
                         $markup,
                         $currency,
                     );
+                    $product = $matched['product'];
 
                     $occurrenceKey = mb_strtolower($name).'|'.$invoice;
                     $lotOccurrences[$occurrenceKey] = ($lotOccurrences[$occurrenceKey] ?? 0) + 1;
@@ -201,7 +204,8 @@ final class InvoicePurchaseImporter
                         );
 
                         return [
-                            'product_created' => false,
+                            'product_created' => $matched['created'],
+                            'product_repriced' => $matched['repriced'],
                             'batch_created' => false,
                             'batch_synced' => $filled,
                             'supplier_created' => $supplier->wasRecentlyCreated,
@@ -224,7 +228,8 @@ final class InvoicePurchaseImporter
                     $this->receivePurchase($batch, $qty, $unitCost, $userId, $notes, $purchasedAt);
 
                     return [
-                        'product_created' => $product->wasRecentlyCreated,
+                        'product_created' => $matched['created'],
+                        'product_repriced' => $matched['repriced'],
                         'batch_created' => true,
                         'batch_synced' => false,
                         'supplier_created' => $supplier->wasRecentlyCreated,
@@ -232,6 +237,9 @@ final class InvoicePurchaseImporter
                 });
 
                 $result['product_created'] ? $stats['products_created']++ : $stats['products_reused']++;
+                if ($result['product_repriced'] ?? false) {
+                    $stats['products_repriced']++;
+                }
                 if ($result['batch_created']) {
                     $stats['batches_created']++;
                 } elseif ($result['batch_synced']) {
@@ -375,6 +383,9 @@ final class InvoicePurchaseImporter
         return $code;
     }
 
+    /**
+     * @return array{product: Product, created: bool, repriced: bool}
+     */
     private function matchOrCreateProduct(
         Tenant $tenant,
         string $name,
@@ -383,7 +394,7 @@ final class InvoicePurchaseImporter
         string $unitCost,
         float $markup,
         string $currency,
-    ): Product {
+    ): array {
         $product = Product::query()
             ->whereRaw('LOWER(commercial_name) = ?', [mb_strtolower($name)])
             ->first();
@@ -391,21 +402,26 @@ final class InvoicePurchaseImporter
         $salePrice = $this->suggestedSalePrice($unitCost, $markup);
 
         if ($product === null) {
-            return Product::query()->create([
-                'tenant_id' => $tenant->id,
-                'category_id' => $categoryId,
-                'sku' => $this->uniqueSku($tenant, $name),
-                'commercial_name' => $name,
-                'preferred_supplier_id' => $supplierId,
-                'purchase_price' => $unitCost,
-                'sale_price' => $salePrice,
-                'currency_code' => $currency,
-                'min_stock' => 0,
-                'critical_stock' => 0,
-                'allocation_strategy' => 'fefo',
-            ]);
+            return [
+                'product' => Product::query()->create([
+                    'tenant_id' => $tenant->id,
+                    'category_id' => $categoryId,
+                    'sku' => $this->uniqueSku($tenant, $name),
+                    'commercial_name' => $name,
+                    'preferred_supplier_id' => $supplierId,
+                    'purchase_price' => $unitCost,
+                    'sale_price' => $salePrice,
+                    'currency_code' => $currency,
+                    'min_stock' => 0,
+                    'critical_stock' => 0,
+                    'allocation_strategy' => 'fefo',
+                ]),
+                'created' => true,
+                'repriced' => false,
+            ];
         }
 
+        $beforeSale = (string) $product->sale_price;
         $updates = [
             'preferred_supplier_id' => $supplierId,
             'category_id' => $product->category_id ?: $categoryId,
@@ -413,15 +429,17 @@ final class InvoicePurchaseImporter
 
         if (bccomp($unitCost, '0', 2) > 0) {
             $updates['purchase_price'] = $unitCost;
-            if (bccomp((string) $product->sale_price, '0', 2) <= 0) {
-                $updates['sale_price'] = $salePrice;
-            }
+            $updates['sale_price'] = $salePrice;
         }
 
         $product->fill($updates);
         $product->save();
 
-        return $product;
+        return [
+            'product' => $product,
+            'created' => false,
+            'repriced' => bccomp($beforeSale, (string) $product->sale_price, 2) !== 0,
+        ];
     }
 
     private function uniqueSku(Tenant $tenant, string $name): string

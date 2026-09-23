@@ -35,7 +35,7 @@ class ImportInvoicePurchasesTest extends TestCase
 
         $this->assertSame('AMBROXOL-15MG-5ML-100ML-ENFANT', $ambroxol->sku);
         $this->assertEqualsWithDelta(5000, (float) $ambroxol->purchase_price, 0.01);
-        $this->assertEqualsWithDelta(6879, (float) $ambroxol->sale_price, 0.01);
+        $this->assertEqualsWithDelta(6000, (float) $ambroxol->sale_price, 0.01);
         $this->assertSame('Respiratoire', $ambroxol->category?->name);
 
         $this->assertSame(2, Batch::query()->where('product_id', $ambroxol->id)->count());
@@ -46,7 +46,7 @@ class ImportInvoicePurchasesTest extends TestCase
             ->firstOrFail();
 
         $this->assertEqualsWithDelta(9400, (float) $start->purchase_price, 0.01);
-        $this->assertEqualsWithDelta(13160, (float) $start->sale_price, 0.01);
+        $this->assertEqualsWithDelta(11280, (float) $start->sale_price, 0.01);
         $this->assertSame(2, Batch::query()->where('product_id', $start->id)->count());
         $this->assertEqualsWithDelta(6, (float) Batch::query()->where('product_id', $start->id)->sum('quantity_on_hand'), 0.001);
 
@@ -126,6 +126,30 @@ class ImportInvoicePurchasesTest extends TestCase
 
         $this->assertSame($beforeProducts, Product::query()->count());
         $this->assertSame($beforeBatches, Batch::query()->count());
+    }
+
+    public function test_reimport_reapplies_invoice_unit_times_markup(): void
+    {
+        $this->seed();
+
+        $args = [
+            '--tenant' => 'manolya-kinshasa',
+            '--file' => base_path('tests/Fixtures/invoice-purchases-sample.json'),
+        ];
+
+        $this->artisan('manolya:import-invoice-purchases', $args)->assertSuccessful();
+
+        $ambroxol = Product::query()
+            ->whereRaw('LOWER(commercial_name) = ?', ['ambroxol 15mg/5ml 100ml enfant'])
+            ->firstOrFail();
+        $ambroxol->sale_price = '99999';
+        $ambroxol->save();
+
+        $this->artisan('manolya:import-invoice-purchases', $args)->assertSuccessful();
+
+        $ambroxol->refresh();
+        $this->assertEqualsWithDelta(5000, (float) $ambroxol->purchase_price, 0.01);
+        $this->assertEqualsWithDelta(6000, (float) $ambroxol->sale_price, 0.01);
     }
 
     public function test_imported_lot_can_be_sold(): void

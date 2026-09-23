@@ -71,6 +71,8 @@ services:
         value: "2702.5"
       - key: SALES_ENFORCE_STOCK
         value: "false"
+      - key: SALE_INVOICE_MARKUP
+        value: "1.2"
       - key: MAIL_MAILER
         value: smtp
       - key: MAIL_HOST

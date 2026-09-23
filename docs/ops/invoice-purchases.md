@@ -16,7 +16,7 @@ Options utiles :
 
 ```bash
 php artisan manolya:import-invoice-purchases --tenant=manolya-kinshasa --dry-run
-php artisan manolya:import-invoice-purchases --tenant=manolya-kinshasa --warehouse=WH-MAIN --markup=1.4
+php artisan manolya:import-invoice-purchases --tenant=manolya-kinshasa --warehouse=WH-MAIN --markup=1.2
 ```
 
 ## Règles métier
@@ -25,7 +25,7 @@ php artisan manolya:import-invoice-purchases --tenant=manolya-kinshasa --warehou
 - SKU dérivé du nom (`AMBROXOL-15MG-…`).
 - Lot : `ACH-{n° facture}-{SKU}` (suffixe `-2` si deux lignes du même produit sur la même facture).
 - Réception via `StockMutator` / `IN_PURCHASE` — le produit devient vendable en caisse.
-- Prix de vente **absent des factures** : `round(prix_achat × 1.4)` (à ajuster ensuite dans le catalogue).
+- Prix de vente = **prix unitaire facture × 1,2** (norme), arrondi à l’unité. Relancer l’import **recalcule** les prix déjà en catalogue.
 - Lignes à coût 0 (gratuits / OCR) : produit + stock quand même ; le prix de vente est repris d’une ligne payée du même nom si elle existe.
 - Dates de péremption absentes : placeholder **2027-09-22**. À corriger lot par lot dès que les dates réelles sont connues.
 - Relancer la commande est **idempotent** si le lot a déjà du stock.
