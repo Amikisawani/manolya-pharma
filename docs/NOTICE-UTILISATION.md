@@ -53,8 +53,8 @@ Si un bouton est absent, c’est en général une question de **permission** —
 
 ### Vendre
 1. Rechercher un produit (nom, SKU, code-barres) — recherche dynamique.
-2. Ajouter au panier, ajuster la quantité et le **montant** (le nouveau montant remplace le prix catalogue pour cette vente).
-3. Choisir le mode de paiement (espèces, carte, Mobile Money).
+2. Ajouter un produit : la liste s’ouvre en fenêtre déplaçable / fermable (montant et quantité y sont éditables).
+3. À droite, **À encaisser** et **Encaisser** restent toujours visibles.
 4. **Encaisser** enregistre la vente — le montant saisi est celui qui est facturé.
 
 ### Stock à la vente

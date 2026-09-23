@@ -37,9 +37,15 @@ const cart = ref<CartLine[]>([]);
 const paymentMethod = ref<'cash' | 'card' | 'mobile_money'>('cash');
 const momoProvider = ref<'orange' | 'airtel' | 'mtn'>('orange');
 const searching = ref(false);
+const cartListOpen = ref(false);
+const cartPos = ref({ x: 24, y: 80 });
+const cartDragging = ref(false);
 const page = usePage();
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 let searchSeq = 0;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+let cartPlaced = false;
 
 const sessionOpen = computed(() => !!props.openSession);
 
@@ -109,8 +115,79 @@ watch(query, () => {
     }, 220);
 });
 
+const cartCount = computed(() => cart.value.length);
+
+const placeCartList = () => {
+    if (cartPlaced) {
+        return;
+    }
+
+    const width = Math.min(672, window.innerWidth - 24);
+    cartPos.value = {
+        x: Math.max(12, Math.round((window.innerWidth - width) / 2)),
+        y: 72,
+    };
+    cartPlaced = true;
+};
+
+const openCartList = () => {
+    if (cart.value.length === 0) {
+        return;
+    }
+
+    placeCartList();
+    cartListOpen.value = true;
+};
+
+const closeCartList = () => {
+    cartListOpen.value = false;
+};
+
+const clampCartPos = (x: number, y: number) => {
+    const maxX = Math.max(12, window.innerWidth - 80);
+    const maxY = Math.max(12, window.innerHeight - 56);
+
+    return {
+        x: Math.min(Math.max(8, x), maxX),
+        y: Math.min(Math.max(8, y), maxY),
+    };
+};
+
+const onCartDragMove = (event: PointerEvent) => {
+    if (!cartDragging.value) {
+        return;
+    }
+
+    cartPos.value = clampCartPos(event.clientX - dragOffsetX, event.clientY - dragOffsetY);
+};
+
+const onCartDragEnd = () => {
+    cartDragging.value = false;
+    window.removeEventListener('pointermove', onCartDragMove);
+    window.removeEventListener('pointerup', onCartDragEnd);
+};
+
+const onCartDragStart = (event: PointerEvent) => {
+    if (event.button !== 0) {
+        return;
+    }
+
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('button, input, select, textarea, a')) {
+        return;
+    }
+
+    cartDragging.value = true;
+    dragOffsetX = event.clientX - cartPos.value.x;
+    dragOffsetY = event.clientY - cartPos.value.y;
+    window.addEventListener('pointermove', onCartDragMove);
+    window.addEventListener('pointerup', onCartDragEnd);
+};
+
 onBeforeUnmount(() => {
     if (searchTimer) clearTimeout(searchTimer);
+    window.removeEventListener('pointermove', onCartDragMove);
+    window.removeEventListener('pointerup', onCartDragEnd);
 });
 
 const addToCart = (product: ProductHit) => {
@@ -126,6 +203,7 @@ const addToCart = (product: ProductHit) => {
             unit_price: Number(product.sale_price) || 0,
         });
     }
+    openCartList();
 };
 
 const bumpQty = (id: string, delta: number) => {
@@ -136,6 +214,9 @@ const bumpQty = (id: string, delta: number) => {
 
 const removeLine = (id: string) => {
     cart.value = cart.value.filter((l) => l.id !== id);
+    if (cart.value.length === 0) {
+        closeCartList();
+    }
 };
 
 const checkout = () => {
@@ -158,6 +239,7 @@ const checkout = () => {
             cart.value = [];
             results.value = [];
             query.value = '';
+            closeCartList();
         },
     });
 };
@@ -293,47 +375,27 @@ const due = computed(() => Math.max(subtotal.value - Number(form.discount_total)
             </section>
 
             <section
-                class="mp-pos-cart flex min-h-0 min-w-0 flex-col self-start overflow-hidden border p-5 lg:col-span-5"
-                style="border-color: var(--mp-line); background: rgba(255,252,247,0.8)"
+                class="mp-pos-cart min-w-0 self-start overflow-hidden border p-5 lg:col-span-5"
+                style="border-color: var(--mp-line); background: rgba(255,252,247,0.96)"
             >
-                <h2 class="mp-section-title shrink-0">Panier</h2>
-                <div class="mp-scroll-main mt-4 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
-                    <div v-for="line in cart" :key="line.id" class="mp-row">
-                        <div class="min-w-0 w-full flex-1 space-y-2">
-                            <div class="truncate font-medium">{{ line.commercial_name }}</div>
-                            <div>
-                                <label class="mp-metric-label" :for="`line-amount-${line.id}`">Montant (Fc)</label>
-                                <input
-                                    :id="`line-amount-${line.id}`"
-                                    v-model.number="line.unit_price"
-                                    type="text"
-                                    inputmode="numeric"
-                                    autocomplete="off"
-                                    class="mp-input mt-1 w-full min-w-0 tabular-nums"
-                                />
-                            </div>
-                            <div class="flex min-w-0 flex-wrap items-center gap-2">
-                                <div class="flex shrink-0 items-center gap-1.5">
-                                    <button class="mp-btn mp-btn-ghost px-2.5" type="button" @click="bumpQty(line.id, -1)">−</button>
-                                    <input
-                                        v-model.number="line.quantity"
-                                        type="number"
-                                        min="1"
-                                        class="mp-input mp-qty-input"
-                                        aria-label="Quantité"
-                                    />
-                                    <button class="mp-btn mp-btn-ghost px-2.5" type="button" @click="bumpQty(line.id, 1)">+</button>
-                                </div>
-                                <button class="shrink-0 text-xs text-[color:var(--mp-danger)]" type="button" @click="removeLine(line.id)">
-                                    Retirer
-                                </button>
-                            </div>
-                        </div>
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h2 class="mp-section-title">Panier</h2>
+                        <p class="mt-1 text-xs text-[color:var(--mp-faint)]">
+                            {{ cartCount === 0 ? 'Aucun produit' : `${cartCount} produit${cartCount > 1 ? 's' : ''}` }}
+                        </p>
                     </div>
-                    <p v-if="!cart.length" class="py-8 text-sm text-[color:var(--mp-muted)]">Panier vide</p>
+                    <button
+                        v-if="cartCount > 0 && !cartListOpen"
+                        class="mp-btn mp-btn-ghost shrink-0"
+                        type="button"
+                        @click="openCartList"
+                    >
+                        Voir les produits
+                    </button>
                 </div>
 
-                <div class="mt-4 shrink-0 space-y-3 border-t pt-4" style="border-color: var(--mp-line); background: rgba(255,252,247,0.96)">
+                <div class="mt-5 space-y-3">
                     <div class="flex items-start justify-between">
                         <span class="text-sm text-[color:var(--mp-muted)]">À encaisser</span>
                         <MoneyAmount :amount="due" size="lg" align="right" />
@@ -369,5 +431,63 @@ const due = computed(() => Math.max(subtotal.value - Number(form.discount_total)
                 </div>
             </section>
         </div>
+
+        <Teleport to="body">
+            <div
+                v-if="sessionOpen && cartListOpen && cartCount > 0"
+                class="mp-pos-cart-float"
+                :class="{ 'is-dragging': cartDragging }"
+                :style="{ left: `${cartPos.x}px`, top: `${cartPos.y}px` }"
+                role="dialog"
+                aria-label="Produits du panier"
+            >
+                <div class="mp-pos-cart-float-head" @pointerdown="onCartDragStart">
+                    <div class="min-w-0">
+                        <p class="mp-metric-label">Produits du panier</p>
+                        <p class="mt-0.5 truncate text-sm font-medium">
+                            {{ cartCount }} article{{ cartCount > 1 ? 's' : '' }} · glisser pour déplacer
+                        </p>
+                    </div>
+                    <button class="mp-btn mp-btn-ghost shrink-0 px-3" type="button" @click="closeCartList">
+                        Fermer
+                    </button>
+                </div>
+                <div class="mp-scroll-main mp-pos-cart-float-body">
+                    <article v-for="line in cart" :key="line.id" class="mp-pos-cart-line">
+                        <div class="min-w-0">
+                            <div class="truncate font-medium">{{ line.commercial_name }}</div>
+                            <div class="text-xs text-[color:var(--mp-faint)]">{{ line.sku }}</div>
+                        </div>
+                        <div>
+                            <label class="mp-metric-label" :for="`line-amount-${line.id}`">Montant (Fc)</label>
+                            <input
+                                :id="`line-amount-${line.id}`"
+                                v-model.number="line.unit_price"
+                                type="text"
+                                inputmode="numeric"
+                                autocomplete="off"
+                                class="mp-input mt-1 w-full min-w-0 tabular-nums"
+                            />
+                        </div>
+                        <div class="flex flex-wrap items-end gap-2">
+                            <div class="flex shrink-0 items-center gap-1.5">
+                                <button class="mp-btn mp-btn-ghost px-2.5" type="button" @click="bumpQty(line.id, -1)">−</button>
+                                <input
+                                    v-model.number="line.quantity"
+                                    type="number"
+                                    min="1"
+                                    class="mp-input mp-qty-input"
+                                    aria-label="Quantité"
+                                />
+                                <button class="mp-btn mp-btn-ghost px-2.5" type="button" @click="bumpQty(line.id, 1)">+</button>
+                            </div>
+                            <button class="shrink-0 text-xs text-[color:var(--mp-danger)]" type="button" @click="removeLine(line.id)">
+                                Retirer
+                            </button>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </Teleport>
     </AuthenticatedLayout>
 </template>
