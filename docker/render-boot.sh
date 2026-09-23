@@ -27,6 +27,12 @@ php artisan config:cache || true
 php artisan route:cache || true
 php artisan view:cache || true
 
+# Factures 22/09/2026 — idempotent (lots ACH-* déjà présents ignorés)
+if [ "${IMPORT_INVOICE_PURCHASES:-true}" != "false" ]; then
+  echo "boot: import factures d’achat (catalogue + stock)"
+  php artisan manolya:import-invoice-purchases || echo "WARN: import factures failed"
+fi
+
 chown -R www-data:www-data storage bootstrap/cache || true
 chmod -R ug+rwx storage bootstrap/cache || true
 
