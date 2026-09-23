@@ -69,6 +69,8 @@ services:
         value: "2350"
       - key: FX_EUR_CDF
         value: "2702.5"
+      - key: SALES_ENFORCE_STOCK
+        value: "false"
       - key: MAIL_MAILER
         value: smtp
       - key: MAIL_HOST

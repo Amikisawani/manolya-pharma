@@ -59,7 +59,8 @@ Si un bouton est absent, c’est en général une question de **permission** —
 
 ### Stock à la vente
 - Le système prélève automatiquement sur les **lots** (stratégie FEFO / FIFO du produit).
-- Si message *Insufficient stock* : le produit n’a pas de quantité disponible dans l’entrepôt de la caisse. Faire une **réception** ou un **ajustement** avant de revendre.
+- **Pour le moment** la caisse ne bloque pas la vente sur la quantité enregistrée : on se tient au stock réel des étalages. Le lot peut passer négatif (à régulariser plus tard par réception / inventaire).
+- Pour réactiver le garde-fou : `SALES_ENFORCE_STOCK=true`. Dans ce cas, *Insufficient stock* = pas de quantité disponible → réception ou ajustement.
 
 ---
 
@@ -209,7 +210,7 @@ Objectif : comprendre l’état de l’officine en quelques secondes.
 | Symptôme | Cause probable | Que faire |
 |----------|----------------|-----------|
 | Impossible de vendre | Pas de session ouverte | Ouvrir une session |
-| *Insufficient stock* | Pas de lot / qté 0 | Réception ou ajustement |
+| *Insufficient stock* | Garde-fou stock activé (`SALES_ENFORCE_STOCK=true`) et qté 0 | Réception / ajustement, ou laisser le flag à `false` pour vendre sur les étalages |
 | Import 0 créé | En-têtes mal lus / fichier .xls | Utiliser .xlsx ; vérifier la 1ʳᵉ ligne d’en-têtes |
 | Prix à 0 après import | Colonnes prix vides | Remplir Prix d’achat / vente en Fc |
 | PDF clôture non reçu | SMTP / file d’attente | Voir l’admin (section messagerie) |

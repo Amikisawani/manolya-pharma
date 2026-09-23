@@ -4,6 +4,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Caisse / ventes
+    |--------------------------------------------------------------------------
+    |
+    | enforce_stock = false : la vente n’est pas bloquée par la qté enregistrée.
+    | On s’aligne sur le stock réel des étalages ; le système peut passer
+    | négatif. Remettre SALES_ENFORCE_STOCK=true pour réactiver le garde-fou.
+    |
+    */
+
+    'sales' => [
+        'enforce_stock' => filter_var(env('SALES_ENFORCE_STOCK', false), FILTER_VALIDATE_BOOLEAN),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Super admin plateforme (appli vierge)
     |--------------------------------------------------------------------------
     |

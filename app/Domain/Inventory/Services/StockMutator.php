@@ -57,8 +57,10 @@ final class StockMutator
 
             $signedQty = $this->signedQuantity($type, $quantity);
             $newQty = bcadd((string) $batch->quantity_on_hand, $signedQty, 3);
+            $allowNegativeSale = $type === StockMovement::TYPE_OUT_SALE
+                && ! (bool) config('manolya.sales.enforce_stock', false);
 
-            if (bccomp($newQty, '0', 3) < 0) {
+            if (bccomp($newQty, '0', 3) < 0 && ! $allowNegativeSale) {
                 throw new RuntimeException(
                     "Batch [{$batch->id}] would go negative (on hand {$batch->quantity_on_hand}, delta {$signedQty})."
                 );
@@ -70,7 +72,7 @@ final class StockMutator
                 $batch->status = Batch::STATUS_DEPLETED;
             }
 
-            if (bccomp($newQty, '0', 3) > 0 && $batch->status === Batch::STATUS_DEPLETED) {
+            if (bccomp($newQty, '0', 3) !== 0 && $batch->status === Batch::STATUS_DEPLETED) {
                 $batch->status = Batch::STATUS_ACTIVE;
             }
 

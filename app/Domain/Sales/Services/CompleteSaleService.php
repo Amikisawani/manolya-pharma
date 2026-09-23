@@ -76,6 +76,7 @@ final class CompleteSaleService
                     warehouseId: $data->warehouseId,
                     quantity: $quantity,
                     strategy: $product->allocation_strategy,
+                    enforceStock: (bool) config('manolya.sales.enforce_stock', false),
                 );
 
                 foreach ($allocations as $allocation) {

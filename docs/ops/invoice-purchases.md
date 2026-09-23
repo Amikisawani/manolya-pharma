@@ -31,6 +31,10 @@ php artisan manolya:import-invoice-purchases --tenant=manolya-kinshasa --warehou
 - Relancer la commande est **idempotent** si le lot a déjà du stock.
 - Si un lot `ACH-*` existe avec **quantité 0** (import incomplet), un second passage **réinjecte la Qté facture** — c’est la colonne Quantité / Qté des bons (pas le n° de ligne).
 
+## Caisse et stock enregistré
+
+Tant que `SALES_ENFORCE_STOCK` est `false` (défaut), une vente n’est **pas** refusée si le lot est à 0 : on s’aligne sur le stock réel des étalages.
+
 ## Après import
 
 1. Vérifier le catalogue et les stocks (dépôt `WH-MAIN`).
