@@ -42,7 +42,7 @@ RUN rm -f /usr/local/etc/php-fpm.d/zz-docker.conf \
       storage/app/temp \
       bootstrap/cache \
     && chmod -R ug+rwx storage bootstrap/cache \
-    && chmod +x docker/render-start.sh \
+    && chmod +x docker/render-start.sh docker/render-boot.sh \
     && php artisan package:discover --ansi || true
 
 EXPOSE 80

@@ -10,14 +10,15 @@ fi
 if [ -n "${DB_URL:-}" ]; then
   DB_URL="$(printf '%s' "$DB_URL" | tr -d '"' | tr -d "'")"
   DB_URL="$(printf '%s' "$DB_URL" | sed 's/[?&]channel_binding=require//g')"
-  # Laravel/PDO : postgres:// ou postgresql:// OK ; forcer postgresql si besoin
   export DB_URL
 fi
 
-# APP_URL : Render expose RENDER_EXTERNAL_URL (https://xxx.onrender.com)
+# APP_URL : Render expose RENDER_EXTERNAL_URL ; domaine custom en dernier recours
 if [ -z "${APP_URL:-}" ] || [ "$APP_URL" = "http://localhost" ] || [ "$APP_URL" = "http://localhost:8000" ]; then
   if [ -n "${RENDER_EXTERNAL_URL:-}" ]; then
     export APP_URL="$RENDER_EXTERNAL_URL"
+  else
+    export APP_URL="https://manolya-pharma.site"
   fi
 fi
 
@@ -33,7 +34,6 @@ if [ -n "${APP_URL:-}" ]; then
 fi
 
 # Neon pooler (-pooler) casse les migrations Laravel (DDL en transaction).
-# Forcer l'endpoint Direct.
 if [ -n "${DB_URL:-}" ]; then
   DB_URL="$(printf '%s' "$DB_URL" | sed 's/-pooler\././g')"
   export DB_URL
@@ -44,24 +44,16 @@ if [ -n "${DB_HOST:-}" ]; then
 fi
 
 echo "DB check: DB_HOST=${DB_HOST:-<empty>} DB_DATABASE=${DB_DATABASE:-<empty>} DB_URL_SET=$([ -n "${DB_URL:-}" ] && echo yes || echo no)"
-echo "APP_URL=${APP_URL:-<empty>}"
-
-if [ -z "${APP_URL:-}" ]; then
-  echo "ERROR: APP_URL manquant. Sur Render mets :"
-  echo "  APP_URL=https://manolya-web-orgf.onrender.com"
-  echo "(sans guillemets, avec https://)"
-  exit 1
-fi
-
-if [ -z "${DB_URL:-}" ] && { [ -z "${DB_HOST:-}" ] || [ "$DB_HOST" = "127.0.0.1" ] || [ "$DB_HOST" = "localhost" ]; }; then
-  echo "ERROR: Postgres Neon non configuré sur Render."
-  echo "Ajoute DB_URL=postgresql://user:pass@host/neondb?sslmode=require"
-  exit 1
-fi
+echo "APP_URL=${APP_URL:-<empty>} PORT=${PORT:-80}"
 
 if [ -z "${APP_KEY:-}" ]; then
   echo "ERROR: APP_KEY manquant (base64:...)."
   exit 1
+fi
+
+if [ -z "${DB_URL:-}" ] && { [ -z "${DB_HOST:-}" ] || [ "$DB_HOST" = "127.0.0.1" ] || [ "$DB_HOST" = "localhost" ]; }; then
+  echo "WARN: Postgres Neon non configuré. nginx démarre quand même pour éviter un 502 Render."
+  echo "Ajoute DB_URL=postgresql://user:pass@host/neondb?sslmode=require"
 fi
 
 export DB_CONNECTION="${DB_CONNECTION:-pgsql}"
@@ -74,24 +66,20 @@ mkdir -p \
   storage/logs \
   storage/app/public \
   storage/app/temp \
-  bootstrap/cache
+  bootstrap/cache \
+  /var/log/supervisor \
+  /run/nginx \
+  /var/log/nginx
 
-php artisan migrate --force
-# Appli vierge : rôles + premier owner (SETUP_OWNER_* / config manolya) si base vide
-php artisan manolya:bootstrap || true
-php artisan storage:link || true
-php artisan config:cache
-php artisan route:cache
-# Non bloquant : Inertia sert surtout du JS ; les Blade PDF restent compilables à la volée
-php artisan view:cache || true
-
-chown -R www-data:www-data storage bootstrap/cache
-chmod -R ug+rwx storage bootstrap/cache
-mkdir -p /var/log/supervisor /run/nginx
-
+# Bind Render $PORT immediately. Migrations run afterwards via supervisor
+# so a Neon froid / migrate lent ne laisse plus le proxy sans listener (502).
 PORT="${PORT:-80}"
 sed "s/__LISTEN_PORT__/${PORT}/g" /var/www/html/docker/nginx-site.conf \
     > /etc/nginx/sites-available/default
 ln -sfn /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+rm -f /etc/nginx/sites-enabled/default.bak
+
+chown -R www-data:www-data storage bootstrap/cache
+chmod -R ug+rwx storage bootstrap/cache
 
 exec /usr/bin/supervisord -n -c /var/www/html/docker/supervisord.conf

@@ -4,6 +4,12 @@ Choix retenu : **Render** (web Docker gratuit) + **Neon** (Postgres gratuit).
 C’est le duo le plus proche de l’expérience Vercel pour un Laravel.
 
 > Le service web free s’endort après ~15 min d’inactivité (1ʳᵉ requête lente au réveil).
+>
+> **502 « This service is currently unavailable »** : Render n’atteint pas le process
+> (mauvais port, migrate bloquant, health check `/login`, ou instance *suspended*).
+> Le health check est `/up`. nginx écoute `$PORT` *avant* les migrations.
+> Dashboard Render → `manolya-web` : branche `deploy/render-free`, **Manual Deploy**.
+> Si l’instance est *suspended* (750 h free / mois, ou bande passante), Resume ou Hobby+.
 
 ## 1. Base Postgres gratuite (Neon)
 
@@ -26,7 +32,7 @@ Garder la ligne `base64:...` pour Render (`APP_KEY`).
 ## 3. Blueprint Render
 
 1. Compte [https://dashboard.render.com](https://dashboard.render.com) (login GitHub)
-2. **New** → **Blueprint** → repo `Amikisawani/manolya-pharma` (branche `main`)
+2. **New** → **Blueprint** → repo `Amikisawani/manolya-pharma` (branche `deploy/render-free`)
 3. Appliquer `render.yaml` → service **manolya-web**
 4. Renseigner les variables (Environment) :
 
