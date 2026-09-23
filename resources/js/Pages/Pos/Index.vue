@@ -292,7 +292,7 @@ const due = computed(() => Math.max(subtotal.value - Number(form.discount_total)
                 </div>
             </section>
 
-            <section class="border p-5 lg:col-span-5" style="border-color: var(--mp-line); background: rgba(255,252,247,0.8)">
+            <section class="min-w-0 overflow-x-hidden border p-5 lg:col-span-5" style="border-color: var(--mp-line); background: rgba(255,252,247,0.8)">
                 <h2 class="mp-section-title">Panier</h2>
                 <div class="mt-4 space-y-1">
                     <div v-for="line in cart" :key="line.id" class="mp-row">
@@ -309,17 +309,19 @@ const due = computed(() => Math.max(subtotal.value - Number(form.discount_total)
                                     class="mp-input mt-1 w-full min-w-0 tabular-nums"
                                 />
                             </div>
-                            <div class="flex items-center gap-2">
-                                <button class="mp-btn mp-btn-ghost px-3" type="button" @click="bumpQty(line.id, -1)">−</button>
-                                <input
-                                    v-model.number="line.quantity"
-                                    type="number"
-                                    min="1"
-                                    class="mp-input w-16 shrink-0 text-center"
-                                    aria-label="Quantité"
-                                />
-                                <button class="mp-btn mp-btn-ghost px-3" type="button" @click="bumpQty(line.id, 1)">+</button>
-                                <button class="ml-auto text-xs text-[color:var(--mp-danger)]" type="button" @click="removeLine(line.id)">
+                            <div class="flex min-w-0 flex-wrap items-center gap-2">
+                                <div class="flex shrink-0 items-center gap-1.5">
+                                    <button class="mp-btn mp-btn-ghost px-2.5" type="button" @click="bumpQty(line.id, -1)">−</button>
+                                    <input
+                                        v-model.number="line.quantity"
+                                        type="number"
+                                        min="1"
+                                        class="mp-input mp-qty-input"
+                                        aria-label="Quantité"
+                                    />
+                                    <button class="mp-btn mp-btn-ghost px-2.5" type="button" @click="bumpQty(line.id, 1)">+</button>
+                                </div>
+                                <button class="shrink-0 text-xs text-[color:var(--mp-danger)]" type="button" @click="removeLine(line.id)">
                                     Retirer
                                 </button>
                             </div>

@@ -158,6 +158,23 @@ body::-webkit-scrollbar-thumb:hover {
     box-shadow: 0 0 0 2px var(--mp-accent-soft);
 }
 
+.mp-input.mp-qty-input {
+    width: 3rem;
+    min-width: 3rem;
+    max-width: 3rem;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    text-align: center;
+    flex-shrink: 0;
+    appearance: textfield;
+}
+
+.mp-input.mp-qty-input::-webkit-outer-spin-button,
+.mp-input.mp-qty-input::-webkit-inner-spin-button {
+    appearance: none;
+    margin: 0;
+}
+
 .mp-badge {
     display: inline-flex;
     align-items: center;
