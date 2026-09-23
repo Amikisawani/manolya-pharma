@@ -1,33 +1,53 @@
 import { nextTick, onMounted } from 'vue';
 
 /**
- * Imprime le ticket HTML isolé (58 mm), pas la page caisse A4.
- * window.print() sur le SPA envoyait une page A4 au PT-210 : le pilote
- * « ajuster à la page » réduisait le texte à une taille microscopique.
+ * Imprime le ticket HTML isolé (58 mm) pour GOOJPRT / POS-58.
+ *
+ * Un iframe est impossible : SecurityHeaders envoie X-Frame-Options: DENY,
+ * donc contentWindow.print() ne fait rien. On ouvre le document ticket
+ * (geste utilisateur) ; la page ticket appelle window.print() elle-même.
  */
 export function useThermalPrint(printUrl: string, printOnLoad = false) {
-    const printReceipt = () => {
+    const autoprintUrl = (): string => {
         if (!printUrl) {
-            return;
+            return '';
         }
 
-        document.getElementById('thermal-print-frame')?.remove();
+        return printUrl.includes('?') ? `${printUrl}&autoprint=1` : `${printUrl}?autoprint=1`;
+    };
 
-        const iframe = document.createElement('iframe');
-        iframe.id = 'thermal-print-frame';
-        iframe.setAttribute('aria-hidden', 'true');
-        iframe.src = printUrl;
-        iframe.style.cssText =
-            'position:fixed;right:0;bottom:0;width:58mm;height:80vh;border:0;opacity:0;pointer-events:none;';
+    const openReceipt = (event?: MouseEvent): boolean => {
+        const url = autoprintUrl();
+        if (!url) {
+            return false;
+        }
 
-        iframe.addEventListener('load', () => {
-            window.setTimeout(() => {
-                iframe.contentWindow?.focus();
-                iframe.contentWindow?.print();
-            }, 280);
-        });
+        if (
+            event &&
+            (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+        ) {
+            return false;
+        }
 
-        document.body.appendChild(iframe);
+        const popup = window.open(url, 'manolya-ticket-58mm');
+        if (popup) {
+            event?.preventDefault();
+            popup.focus();
+
+            return true;
+        }
+
+        if (!event) {
+            window.location.assign(url);
+
+            return true;
+        }
+
+        return false;
+    };
+
+    const printReceipt = (event?: MouseEvent) => {
+        openReceipt(event);
     };
 
     onMounted(() => {
@@ -36,9 +56,15 @@ export function useThermalPrint(printUrl: string, printOnLoad = false) {
         }
 
         void nextTick(() => {
-            window.setTimeout(printReceipt, 400);
+            const current = new URL(window.location.href);
+            current.searchParams.delete('print');
+            current.searchParams.delete('reprint');
+            const cleaned = current.pathname + (current.search ? current.search : '');
+            window.history.replaceState({}, '', cleaned);
+
+            openReceipt();
         });
     });
 
-    return { printReceipt };
+    return { printReceipt, autoprintUrl };
 }

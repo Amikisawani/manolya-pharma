@@ -28,7 +28,7 @@ class ThermalReceiptTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('Sales/Show')
                 ->where('receipt.brand_name', 'MANOLYA PHARMA')
-                ->where('receiptPrintUrl', route('sales.receipt', $sale))
+                ->where('receiptPrintUrl', route('sales.receipt', $sale, absolute: false))
                 ->has('receipt.lines')
                 ->has('receipt.grand_total')
             );
@@ -37,14 +37,24 @@ class ThermalReceiptTest extends TestCase
             ->get(route('sales.receipt', $sale))
             ->assertOk()
             ->assertHeader('content-type', 'text/html; charset=UTF-8')
+            ->assertHeader('x-frame-options', 'DENY')
             ->assertSee('size: 58mm auto', false)
             ->assertSee('width: 100%', false)
             ->assertSee('MANOLYA PHARMA', false)
             ->assertSee($sale->number, false)
+            ->assertSee('Imprimer', false)
+            ->assertSee('Retour caisse', false)
+            ->assertDontSee('printTicket', false)
             ->assertDontSee('Tableau de bord', false);
 
         $html->assertSee('font-size: 12pt', false);
         $html->assertSee('font-size: 16pt', false);
+
+        $this->actingAs($owner)
+            ->get(route('sales.receipt', $sale).'?autoprint=1')
+            ->assertOk()
+            ->assertSee('printTicket', false)
+            ->assertSee('afterprint', false);
 
         $receipt = app(ThermalReceiptBuilder::class)->fromSale($sale);
         $this->assertNotSame('', $receipt->grandTotal);

@@ -7,7 +7,12 @@
     <style>{!! file_get_contents(resource_path('css/receipt-print-58mm.css')) !!}</style>
 </head>
 <body>
-<article class="mp-print-ticket" aria-label="Ticket de caisse 58 millimètres">
+    <nav class="mp-print-toolbar" aria-label="Actions ticket">
+        <button type="button" class="mp-print-toolbar-btn" onclick="window.print()">Imprimer</button>
+        <a class="mp-print-toolbar-btn" href="{{ $saleShowUrl }}">Voir la vente</a>
+        <a class="mp-print-toolbar-btn" href="{{ $posUrl }}">Retour caisse</a>
+    </nav>
+    <article class="mp-print-ticket" aria-label="Ticket de caisse 58 millimètres">
     @if ($receipt->statusLabel)
         <p class="mp-print-status">{{ $receipt->statusLabel }}</p>
     @endif
@@ -106,5 +111,32 @@
     <p class="mp-print-foot mp-print-thanks">Merci !</p>
     <p class="mp-print-foot">{{ $receipt->footerMessage }}</p>
 </article>
+@if ($autoprint)
+<script>
+    (function () {
+        var printed = false;
+        function printTicket() {
+            if (printed) {
+                return;
+            }
+            printed = true;
+            window.focus();
+            window.print();
+        }
+        if (document.readyState === 'complete') {
+            window.setTimeout(printTicket, 400);
+        } else {
+            window.addEventListener('load', function () {
+                window.setTimeout(printTicket, 400);
+            });
+        }
+        window.addEventListener('afterprint', function () {
+            if (window.opener && !window.opener.closed) {
+                window.close();
+            }
+        });
+    })();
+</script>
+@endif
 </body>
 </html>

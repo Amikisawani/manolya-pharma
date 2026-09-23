@@ -167,7 +167,38 @@ body {
     font-weight: 700;
 }
 
+.mp-print-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #f4f1ea;
+    border-bottom: 1px solid #d5cbbd;
+}
+
+.mp-print-toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    border: 1px solid #1c2420;
+    background: #1c2420;
+    color: #fff;
+    font: 600 13px/1.2 Arial, Helvetica, sans-serif;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.mp-print-toolbar a.mp-print-toolbar-btn {
+    background: #fff;
+    color: #1c2420;
+}
+
 @media print {
+    .mp-print-toolbar {
+        display: none !important;
+    }
+
     html,
     body,
     .mp-print-ticket {

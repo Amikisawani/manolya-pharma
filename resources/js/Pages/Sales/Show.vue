@@ -18,7 +18,12 @@ const props = defineProps<{
     printOnLoad?: boolean;
 }>();
 
-const { printReceipt } = useThermalPrint(props.receiptPrintUrl, Boolean(props.printOnLoad));
+const { printReceipt, autoprintUrl } = useThermalPrint(
+    props.receiptPrintUrl,
+    Boolean(props.printOnLoad),
+);
+
+const receiptHref = computed(() => autoprintUrl());
 
 const methodLabel = (method: string) =>
     ({ cash: 'Espèces', card: 'Carte', mobile_money: 'Mobile Money' }[method] ?? method);
@@ -75,9 +80,15 @@ const submitReturn = () => {
                 </div>
                 <div class="flex flex-wrap gap-2 mp-no-print">
                     <a :href="`${ticketPdfUrl}?download=1`" class="mp-btn mp-btn-ghost">Télécharger PDF</a>
-                    <button class="mp-btn mp-btn-primary" type="button" @click="printReceipt">
+                    <a
+                        class="mp-btn mp-btn-primary"
+                        :href="receiptHref"
+                        target="_blank"
+                        rel="noopener"
+                        @click="printReceipt"
+                    >
                         Imprimer 58 mm
-                    </button>
+                    </a>
                     <Link :href="route('pos.index')" class="mp-btn mp-btn-ghost">Retour caisse</Link>
                 </div>
             </div>

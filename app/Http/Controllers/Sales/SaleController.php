@@ -93,7 +93,7 @@ class SaleController extends Controller
                 ->where('status', CashRegisterSession::STATUS_OPEN)
                 ->exists(),
             'ticketPdfUrl' => route('sales.ticket', $sale),
-            'receiptPrintUrl' => route('sales.receipt', $sale, absolute: true)
+            'receiptPrintUrl' => route('sales.receipt', $sale, absolute: false)
                 .($request->boolean('reprint') ? '?reprint=1' : ''),
             'receipt' => $receipts->fromSale($sale, $request->boolean('reprint'))->toArray(),
             'printOnLoad' => $printOnLoad,
@@ -106,6 +106,9 @@ class SaleController extends Controller
 
         return response()->view('sales.receipt-58mm', [
             'receipt' => $receipts->fromSale($sale, $request->boolean('reprint')),
+            'autoprint' => $request->boolean('autoprint'),
+            'saleShowUrl' => route('sales.show', $sale, false),
+            'posUrl' => route('pos.index', absolute: false),
         ], 200, [
             'Content-Type' => 'text/html; charset=UTF-8',
             'Cache-Control' => 'private, no-store',
