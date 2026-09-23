@@ -296,36 +296,33 @@ const due = computed(() => Math.max(subtotal.value - Number(form.discount_total)
                 <h2 class="mp-section-title">Panier</h2>
                 <div class="mt-4 space-y-1">
                     <div v-for="line in cart" :key="line.id" class="mp-row">
-                        <div class="min-w-0 flex-1">
+                        <div class="min-w-0 w-full flex-1 space-y-2">
                             <div class="truncate font-medium">{{ line.commercial_name }}</div>
-                            <div class="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
-                                <div>
-                                    <label class="mp-metric-label" :for="`line-amount-${line.id}`">Montant (Fc)</label>
-                                    <input
-                                        :id="`line-amount-${line.id}`"
-                                        v-model.number="line.unit_price"
-                                        type="number"
-                                        min="0"
-                                        step="1"
-                                        inputmode="decimal"
-                                        class="mp-input mt-1 tabular-nums"
-                                    />
-                                </div>
-                                <div class="flex items-center gap-2 pb-0.5">
-                                    <button class="mp-btn mp-btn-ghost px-3" type="button" @click="bumpQty(line.id, -1)">−</button>
-                                    <input
-                                        v-model.number="line.quantity"
-                                        type="number"
-                                        min="1"
-                                        class="mp-input w-16 text-center"
-                                        aria-label="Quantité"
-                                    />
-                                    <button class="mp-btn mp-btn-ghost px-3" type="button" @click="bumpQty(line.id, 1)">+</button>
-                                </div>
+                            <div>
+                                <label class="mp-metric-label" :for="`line-amount-${line.id}`">Montant (Fc)</label>
+                                <input
+                                    :id="`line-amount-${line.id}`"
+                                    v-model.number="line.unit_price"
+                                    type="text"
+                                    inputmode="numeric"
+                                    autocomplete="off"
+                                    class="mp-input mt-1 w-full min-w-0 tabular-nums"
+                                />
                             </div>
-                            <button class="mt-2 text-xs text-[color:var(--mp-danger)]" type="button" @click="removeLine(line.id)">
-                                Retirer
-                            </button>
+                            <div class="flex items-center gap-2">
+                                <button class="mp-btn mp-btn-ghost px-3" type="button" @click="bumpQty(line.id, -1)">−</button>
+                                <input
+                                    v-model.number="line.quantity"
+                                    type="number"
+                                    min="1"
+                                    class="mp-input w-16 shrink-0 text-center"
+                                    aria-label="Quantité"
+                                />
+                                <button class="mp-btn mp-btn-ghost px-3" type="button" @click="bumpQty(line.id, 1)">+</button>
+                                <button class="ml-auto text-xs text-[color:var(--mp-danger)]" type="button" @click="removeLine(line.id)">
+                                    Retirer
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <p v-if="!cart.length" class="py-8 text-sm text-[color:var(--mp-muted)]">Panier vide</p>
