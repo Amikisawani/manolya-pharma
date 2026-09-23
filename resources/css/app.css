@@ -325,6 +325,13 @@ body::-webkit-scrollbar-thumb:hover {
     background: transparent;
 }
 
+/* Caisse : le pied « À encaisser → Encaisser » reste à l’écran */
+.mp-pos-cart {
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100dvh - 14rem);
+}
+
 .mp-tip-fade-enter-active,
 .mp-tip-fade-leave-active {
     transition: opacity 0.55s ease;

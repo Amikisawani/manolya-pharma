@@ -253,7 +253,7 @@ const due = computed(() => Math.max(subtotal.value - Number(form.discount_total)
             </form>
         </div>
 
-        <div v-else class="grid gap-8 lg:grid-cols-12">
+        <div v-else class="grid items-start gap-8 lg:grid-cols-12">
             <section class="lg:col-span-7">
                 <label class="mp-metric-label">Recherche produit</label>
                 <div class="mt-2 relative">
@@ -292,9 +292,12 @@ const due = computed(() => Math.max(subtotal.value - Number(form.discount_total)
                 </div>
             </section>
 
-            <section class="min-w-0 overflow-x-hidden border p-5 lg:col-span-5" style="border-color: var(--mp-line); background: rgba(255,252,247,0.8)">
-                <h2 class="mp-section-title">Panier</h2>
-                <div class="mt-4 space-y-1">
+            <section
+                class="mp-pos-cart flex min-h-0 min-w-0 flex-col self-start overflow-hidden border p-5 lg:col-span-5"
+                style="border-color: var(--mp-line); background: rgba(255,252,247,0.8)"
+            >
+                <h2 class="mp-section-title shrink-0">Panier</h2>
+                <div class="mp-scroll-main mt-4 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
                     <div v-for="line in cart" :key="line.id" class="mp-row">
                         <div class="min-w-0 w-full flex-1 space-y-2">
                             <div class="truncate font-medium">{{ line.commercial_name }}</div>
@@ -330,7 +333,7 @@ const due = computed(() => Math.max(subtotal.value - Number(form.discount_total)
                     <p v-if="!cart.length" class="py-8 text-sm text-[color:var(--mp-muted)]">Panier vide</p>
                 </div>
 
-                <div class="mt-6 space-y-3 border-t pt-4" style="border-color: var(--mp-line)">
+                <div class="mt-4 shrink-0 space-y-3 border-t pt-4" style="border-color: var(--mp-line); background: rgba(255,252,247,0.96)">
                     <div class="flex items-start justify-between">
                         <span class="text-sm text-[color:var(--mp-muted)]">À encaisser</span>
                         <MoneyAmount :amount="due" size="lg" align="right" />
