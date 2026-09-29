@@ -44,16 +44,19 @@ class ImportInvoicePurchasesCommand extends Command
             return self::FAILURE;
         }
 
-        $path = (string) ($this->option('file') ?: InvoicePurchaseImporter::defaultDatasetPath());
+        $file = trim((string) $this->option('file'));
+        $options = [
+            'markup' => $this->option('markup') ?: config('manolya.sales.invoice_markup', InvoicePurchaseImporter::DEFAULT_MARKUP),
+            'expires_at' => $this->option('expires'),
+            'purchased_at' => $this->option('purchased-at'),
+            'dry_run' => (bool) $this->option('dry-run'),
+            'warehouse_id' => $this->option('warehouse'),
+        ];
 
         try {
-            $stats = $importer->import($path, $tenants->first(), [
-                'markup' => $this->option('markup') ?: config('manolya.sales.invoice_markup', InvoicePurchaseImporter::DEFAULT_MARKUP),
-                'expires_at' => $this->option('expires'),
-                'purchased_at' => $this->option('purchased-at'),
-                'dry_run' => (bool) $this->option('dry-run'),
-                'warehouse_id' => $this->option('warehouse'),
-            ]);
+            $stats = $file !== ''
+                ? $importer->import($file, $tenants->first(), $options)
+                : $importer->importAll($tenants->first(), $options);
         } catch (\Throwable $e) {
             $this->error($e->getMessage());
 

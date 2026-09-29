@@ -207,11 +207,56 @@ class ImportInvoicePurchasesTest extends TestCase
 
         $this->artisan('manolya:import-invoice-purchases', [
             '--tenant' => 'manolya-kinshasa',
+            '--file' => InvoicePurchaseImporter::defaultDatasetPath(),
         ])->assertSuccessful();
 
         $this->assertSame(467, Product::query()->count());
         $this->assertSame(470, Batch::query()->where('lot_number', 'like', 'ACH-%')->count());
         $this->assertTrue(Supplier::query()->where('code', 'PHARMANS')->exists());
         $this->assertTrue(Tenant::query()->where('slug', 'manolya-kinshasa')->exists());
+    }
+
+    public function test_september_29_invoice_dataset_imports(): void
+    {
+        $this->seed();
+
+        $path = database_path('data/manolya_invoices_2026-09-29.json');
+        $this->assertFileExists($path);
+
+        $this->artisan('manolya:import-invoice-purchases', [
+            '--tenant' => 'manolya-kinshasa',
+            '--file' => $path,
+        ])->assertSuccessful();
+
+        $this->assertSame(289, Product::query()->count());
+        $this->assertSame(296, Batch::query()->where('lot_number', 'like', 'ACH-%')->count());
+        $this->assertTrue(Supplier::query()->where('code', 'AFRICA')->exists());
+        $this->assertTrue(Supplier::query()->where('code', 'PROMED')->exists());
+        $this->assertTrue(Supplier::query()->where('code', 'CONFIANCE')->exists());
+        $this->assertTrue(Supplier::query()->where('code', 'CAISA')->exists());
+
+        $actin = Product::query()
+            ->whereRaw('LOWER(commercial_name) = ?', ['actin adult 80/480mg 6cés / malacum'])
+            ->firstOrFail();
+        $this->assertEqualsWithDelta(1668.52, (float) $actin->purchase_price, 0.01);
+        $this->assertEqualsWithDelta(2002, (float) $actin->sale_price, 0.01);
+
+        $lot = Batch::query()->where('lot_number', 'like', 'ACH-218734139-%')->firstOrFail();
+        $this->assertSame('2027-09-29', $lot->expires_at->toDateString());
+    }
+
+    public function test_omitting_file_imports_all_invoice_datasets(): void
+    {
+        $this->seed();
+
+        $this->artisan('manolya:import-invoice-purchases', [
+            '--tenant' => 'manolya-kinshasa',
+        ])->assertSuccessful();
+
+        $this->assertSame(748, Product::query()->count());
+        $this->assertSame(766, Batch::query()->where('lot_number', 'like', 'ACH-%')->count());
+        $this->assertTrue(Supplier::query()->where('code', 'PHARMANS')->exists());
+        $this->assertTrue(Supplier::query()->where('code', 'AFRICA')->exists());
+        $this->assertTrue(Supplier::query()->where('code', 'CAISA')->exists());
     }
 }

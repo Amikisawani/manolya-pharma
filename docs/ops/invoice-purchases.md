@@ -1,15 +1,22 @@
-# Import des factures d’achat (22/09/2026)
+# Import des factures d’achat
 
-Les photos de factures (Compagnon EPVG, Avril Pharma, Pharmans, Unique Depot) ont été saisies dans :
+Les photos de factures ont été saisies dans :
 
-`database/data/manolya_invoices_2026-09-22.json`
+- `database/data/manolya_invoices_2026-09-22.json` — Compagnon EPVG, Avril Pharma, Pharmans, Unique Depot (~470 lignes)
+- `database/data/manolya_invoices_2026-09-29.json` — Compagnon, Avril, Unique, La Confiance, Caisa, Africa Pharmacy, Promed Gros (~296 lignes)
 
-(~470 lignes). Cet import **n’est pas** lancé au `db:seed`. Il faut l’exécuter une fois sur l’environnement cible (pilote / prod) après migrate.
+Sans `--file`, la commande charge **tous** les `database/data/manolya_invoices_*.json` (dates d’achat / péremption placeholder lues dans `_meta` de chaque fichier). Cet import **n’est pas** lancé au `db:seed`. Il faut l’exécuter une fois sur l’environnement cible (pilote / prod) après migrate — le boot Render le relance de façon idempotente.
 
 ## Commande
 
 ```bash
 php artisan manolya:import-invoice-purchases --tenant=manolya-kinshasa
+```
+
+Un fichier précis :
+
+```bash
+php artisan manolya:import-invoice-purchases --tenant=manolya-kinshasa --file=database/data/manolya_invoices_2026-09-29.json
 ```
 
 Options utiles :
@@ -27,7 +34,7 @@ php artisan manolya:import-invoice-purchases --tenant=manolya-kinshasa --warehou
 - Réception via `StockMutator` / `IN_PURCHASE` — le produit devient vendable en caisse.
 - Prix de vente = **prix unitaire facture × 1,2** (norme), arrondi à l’unité. Relancer l’import **recalcule** les prix déjà en catalogue.
 - Lignes à coût 0 (gratuits / OCR) : produit + stock quand même ; le prix de vente est repris d’une ligne payée du même nom si elle existe.
-- Dates de péremption absentes : placeholder **2027-09-22**. À corriger lot par lot dès que les dates réelles sont connues.
+- Dates de péremption absentes : placeholder **+1 an** (`2027-09-22` / `2027-09-29` selon le fichier). À corriger lot par lot dès que les dates réelles sont connues.
 - Relancer la commande est **idempotent** si le lot a déjà du stock.
 - Si un lot `ACH-*` existe avec **quantité 0** (import incomplet), un second passage **réinjecte la Qté facture** — c’est la colonne Quantité / Qté des bons (pas le n° de ligne).
 

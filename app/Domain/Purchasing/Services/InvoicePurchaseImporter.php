@@ -37,10 +37,61 @@ final class InvoicePurchaseImporter
     }
 
     /**
+     * @return list<string>
+     */
+    public static function defaultDatasetPaths(): array
+    {
+        $files = glob(database_path('data/manolya_invoices_*.json')) ?: [];
+        sort($files);
+
+        return array_values($files);
+    }
+
+    /**
      * @param  array{
      *     markup?: float|int|string,
-     *     expires_at?: string,
-     *     purchased_at?: string,
+     *     expires_at?: string|null,
+     *     purchased_at?: string|null,
+     *     dry_run?: bool,
+     *     user_id?: string|null,
+     *     warehouse_id?: string|null,
+     *     paths?: list<string>
+     * }  $options
+     * @return array{
+     *     products_created: int,
+     *     products_reused: int,
+     *     products_repriced: int,
+     *     batches_created: int,
+     *     batches_synced: int,
+     *     batches_skipped: int,
+     *     lines_skipped: int,
+     *     suppliers_created: int,
+     *     errors: list<string>,
+     *     warnings: list<string>
+     * }
+     */
+    public function importAll(Tenant $tenant, array $options = []): array
+    {
+        $paths = $options['paths'] ?? self::defaultDatasetPaths();
+        if ($paths === []) {
+            throw new InvalidArgumentException('Aucun fichier database/data/manolya_invoices_*.json.');
+        }
+
+        $merged = $this->emptyStats(self::DEFAULT_MARKUP, self::DEFAULT_EXPIRES_AT);
+        $merged['warnings'] = [];
+
+        foreach ($paths as $path) {
+            $merged = $this->mergeStats($merged, $this->import($path, $tenant, $options));
+        }
+
+        return $merged;
+    }
+
+    /**
+     * @param  array{
+     *     markup?: float|int|string,
+     *     expires_at?: string|null,
+     *     purchased_at?: string|null,
      *     dry_run?: bool,
      *     user_id?: string|null,
      *     warehouse_id?: string|null
@@ -76,8 +127,15 @@ final class InvoicePurchaseImporter
 
         $dryRun = (bool) ($options['dry_run'] ?? false);
         $tz = $tenant->timezone ?: 'Africa/Kinshasa';
-        $purchasedAt = Carbon::parse((string) ($options['purchased_at'] ?? self::DEFAULT_PURCHASED_AT), $tz)->startOfDay();
-        $expiresAt = Carbon::parse((string) ($options['expires_at'] ?? self::DEFAULT_EXPIRES_AT), $tz)->toDateString();
+        $meta = $this->extractMeta($decoded);
+        $purchasedAt = Carbon::parse(
+            $this->resolveDate($options, $meta, 'purchased_at', self::DEFAULT_PURCHASED_AT),
+            $tz,
+        )->startOfDay();
+        $expiresAt = Carbon::parse(
+            $this->resolveDate($options, $meta, 'expires_at', self::DEFAULT_EXPIRES_AT),
+            $tz,
+        )->toDateString();
 
         app()->instance('current_tenant_id', (string) $tenant->id);
 
@@ -85,21 +143,7 @@ final class InvoicePurchaseImporter
         $userId = $this->resolveUserId($tenant, $options['user_id'] ?? null);
         $currency = $tenant->default_currency ?: 'CDF';
 
-        $stats = [
-            'products_created' => 0,
-            'products_reused' => 0,
-            'products_repriced' => 0,
-            'batches_created' => 0,
-            'batches_synced' => 0,
-            'batches_skipped' => 0,
-            'lines_skipped' => 0,
-            'suppliers_created' => 0,
-            'errors' => [],
-            'warnings' => [
-                "Péremption facture absente : lots créés avec date fictive {$expiresAt} (à corriger dès que les dates réelles sont connues).",
-                'Prix de vente = prix unitaire facture × '.rtrim(rtrim(number_format($markup, 2, '.', ''), '0'), '.').' (arrondi à l’unité).',
-            ],
-        ];
+        $stats = $this->emptyStats($markup, $expiresAt);
 
         $lotOccurrences = [];
 
@@ -367,6 +411,10 @@ final class InvoicePurchaseImporter
             'avril pharma depot gombe' => 'AVRIL',
             'pharmans' => 'PHARMANS',
             'unique depot pharmaceutique' => 'UNIQUE',
+            'africa pharmacy sarl' => 'AFRICA',
+            'promed gros' => 'PROMED',
+            'la confiance' => 'CONFIANCE',
+            'caisa pharma international' => 'CAISA',
         ];
 
         $base = $known[mb_strtolower($name)]
@@ -464,6 +512,135 @@ final class InvoicePurchaseImporter
         $lot = $occurrence <= 1 ? $base : $base.'-'.$occurrence;
 
         return Str::limit($lot, 64, '');
+    }
+
+    /**
+     * @return array{
+     *     products_created: int,
+     *     products_reused: int,
+     *     products_repriced: int,
+     *     batches_created: int,
+     *     batches_synced: int,
+     *     batches_skipped: int,
+     *     lines_skipped: int,
+     *     suppliers_created: int,
+     *     errors: list<string>,
+     *     warnings: list<string>
+     * }
+     */
+    private function emptyStats(float $markup, string $expiresAt): array
+    {
+        return [
+            'products_created' => 0,
+            'products_reused' => 0,
+            'products_repriced' => 0,
+            'batches_created' => 0,
+            'batches_synced' => 0,
+            'batches_skipped' => 0,
+            'lines_skipped' => 0,
+            'suppliers_created' => 0,
+            'errors' => [],
+            'warnings' => [
+                "Péremption facture absente : lots créés avec date fictive {$expiresAt} (à corriger dès que les dates réelles sont connues).",
+                'Prix de vente = prix unitaire facture × '.rtrim(rtrim(number_format($markup, 2, '.', ''), '0'), '.').' (arrondi à l’unité).',
+            ],
+        ];
+    }
+
+    /**
+     * @param  array{
+     *     products_created: int,
+     *     products_reused: int,
+     *     products_repriced: int,
+     *     batches_created: int,
+     *     batches_synced: int,
+     *     batches_skipped: int,
+     *     lines_skipped: int,
+     *     suppliers_created: int,
+     *     errors: list<string>,
+     *     warnings: list<string>
+     * }  $left
+     * @param  array{
+     *     products_created: int,
+     *     products_reused: int,
+     *     products_repriced: int,
+     *     batches_created: int,
+     *     batches_synced: int,
+     *     batches_skipped: int,
+     *     lines_skipped: int,
+     *     suppliers_created: int,
+     *     errors: list<string>,
+     *     warnings: list<string>
+     * }  $right
+     * @return array{
+     *     products_created: int,
+     *     products_reused: int,
+     *     products_repriced: int,
+     *     batches_created: int,
+     *     batches_synced: int,
+     *     batches_skipped: int,
+     *     lines_skipped: int,
+     *     suppliers_created: int,
+     *     errors: list<string>,
+     *     warnings: list<string>
+     * }
+     */
+    private function mergeStats(array $left, array $right): array
+    {
+        foreach ([
+            'products_created',
+            'products_reused',
+            'products_repriced',
+            'batches_created',
+            'batches_synced',
+            'batches_skipped',
+            'lines_skipped',
+            'suppliers_created',
+        ] as $key) {
+            $left[$key] += $right[$key];
+        }
+
+        $left['errors'] = array_merge($left['errors'], $right['errors']);
+        $left['warnings'] = array_values(array_unique(array_merge($left['warnings'], $right['warnings'])));
+
+        return $left;
+    }
+
+    /**
+     * @param  list<mixed>  $decoded
+     * @return array{purchased_at?: string, expires_at?: string}
+     */
+    private function extractMeta(array $decoded): array
+    {
+        foreach ($decoded as $row) {
+            if (is_array($row) && ($row['_meta'] ?? false) === true) {
+                return [
+                    'purchased_at' => trim((string) ($row['purchased_at'] ?? '')),
+                    'expires_at' => trim((string) ($row['expires_at'] ?? '')),
+                ];
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * @param  array{purchased_at?: string|null, expires_at?: string|null}  $options
+     * @param  array{purchased_at?: string, expires_at?: string}  $meta
+     */
+    private function resolveDate(array $options, array $meta, string $key, string $fallback): string
+    {
+        $fromCli = trim((string) ($options[$key] ?? ''));
+        if ($fromCli !== '') {
+            return $fromCli;
+        }
+
+        $fromMeta = trim((string) ($meta[$key] ?? ''));
+        if ($fromMeta !== '') {
+            return $fromMeta;
+        }
+
+        return $fallback;
     }
 
     private function suggestedSalePrice(string $unitCost, float $markup): string
