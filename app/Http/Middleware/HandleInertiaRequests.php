@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Domain\Inventory\Services\StockValuation;
 use App\Models\CashRegisterSession;
 use App\Models\Tenant;
 use App\Models\User;
@@ -56,7 +57,26 @@ class HandleInertiaRequests extends Middleware
                 'release' => config('sentry.release'),
             ],
             'cashSessionDuty' => $this->cashSessionDuty($user),
+            'stockWorth' => fn () => $this->stockWorth($user),
         ];
+    }
+
+    /**
+     * @return array{
+     *     cost: string,
+     *     sale_value: string,
+     *     expected_profit: string,
+     *     units: string,
+     *     products: int
+     * }|null
+     */
+    private function stockWorth(?User $user): ?array
+    {
+        if ($user === null || $user->tenant_id === null) {
+            return null;
+        }
+
+        return app(StockValuation::class)->present();
     }
 
     private function portalUser(Request $request): ?User

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MoneyAmount from '@/Components/MoneyAmount.vue';
+import StockWorth from '@/Components/StockWorth.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { onMounted, ref, watch } from 'vue';
 import ApexCharts from 'apexcharts';
@@ -100,7 +101,9 @@ watch(() => props.chartPlaceholder, renderChart, { deep: true });
             </div>
         </template>
 
-        <section class="grid gap-x-10 gap-y-2 border-y py-2 md:grid-cols-2 xl:grid-cols-4" style="border-color: var(--mp-line)">
+        <StockWorth />
+
+        <section class="mt-8 grid gap-x-10 gap-y-2 border-y py-2 md:grid-cols-2 xl:grid-cols-4" style="border-color: var(--mp-line)">
             <div class="mp-metric">
                 <div class="mp-metric-label">CA du jour</div>
                 <MoneyAmount class="mt-2" :amount="kpis.ca_today" size="lg" />
@@ -122,8 +125,8 @@ watch(() => props.chartPlaceholder, renderChart, { deep: true });
                 <MoneyAmount class="mt-2" :amount="kpis.expenses_month" size="md" />
             </div>
             <div class="mp-metric">
-                <div class="mp-metric-label">Valeur stock</div>
-                <MoneyAmount class="mt-2" :amount="kpis.stock_value" size="md" />
+                <div class="mp-metric-label">Bénéfice prévu</div>
+                <MoneyAmount class="mt-2" :amount="kpis.expected_profit" size="md" />
             </div>
             <div class="mp-metric">
                 <div class="mp-metric-label">Ruptures</div>

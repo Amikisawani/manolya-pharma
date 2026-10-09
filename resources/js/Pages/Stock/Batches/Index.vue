@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MoneyAmount from '@/Components/MoneyAmount.vue';
+import StockWorth from '@/Components/StockWorth.vue';
 import { formatQty } from '@/Composables/useQuantity';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
@@ -45,6 +46,8 @@ const submitAdjust = () => adjustForm.post(route('stock.adjustments.store'), { o
                 <h1 class="mp-display mt-1 text-4xl">Stock & lots</h1>
             </div>
         </template>
+
+        <StockWorth class="mb-8" />
 
         <div class="mb-8 grid gap-8 lg:grid-cols-12">
             <div class="flex flex-wrap gap-2 lg:col-span-8">

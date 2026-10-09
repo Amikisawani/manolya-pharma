@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MoneyAmount from '@/Components/MoneyAmount.vue';
+import StockWorth from '@/Components/StockWorth.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { onBeforeUnmount, ref, watch } from 'vue';
 
@@ -62,6 +63,8 @@ const onFile = (e: Event) => {
                 </div>
             </div>
         </template>
+
+        <StockWorth class="mb-8" />
 
         <p class="mb-4 text-xs text-[color:var(--mp-faint)]">
             Colonnes : sku;commercial_name;…;min_stock;critical_stock;… · stock auto à l’import (optionnel : quantite / lot / expiration)

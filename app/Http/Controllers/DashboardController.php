@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Inventory\Services\StockValuation;
 use App\Domain\Reporting\Services\CashSessionReportQuery;
 use App\Models\Batch;
 use App\Models\CashRegisterSession;
@@ -16,7 +17,7 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request, CashSessionReportQuery $sessionReports): Response
+    public function __invoke(Request $request, CashSessionReportQuery $sessionReports, StockValuation $stockValuation): Response
     {
         $todayStart = now()->startOfDay();
         $monthStart = now()->startOfMonth();
@@ -75,10 +76,7 @@ class DashboardController extends Controller
             ->havingRaw('COALESCE(SUM(batches.quantity_on_hand), 0) <= 0')
             ->count();
 
-        $stockValue = (string) Batch::query()
-            ->where('quantity_on_hand', '>', 0)
-            ->selectRaw('COALESCE(SUM(quantity_on_hand * unit_cost), 0) as value')
-            ->value('value');
+        $stockWorth = $stockValuation->present();
 
         $topProductsToday = SaleLine::query()
             ->select('sale_lines.product_id', 'products.commercial_name', 'products.sku')
@@ -141,7 +139,9 @@ class DashboardController extends Controller
                 'expired_batches' => $expiredBatches,
                 'expiring_soon' => $expiringSoon,
                 'stockouts' => $stockouts,
-                'stock_value' => $stockValue,
+                'stock_value' => $stockWorth['cost'],
+                'stock_sale_value' => $stockWorth['sale_value'],
+                'expected_profit' => $stockWorth['expected_profit'],
                 'critical_count' => $criticalProducts->count(),
             ],
             'criticalProducts' => $criticalProducts,

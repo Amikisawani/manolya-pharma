@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MoneyAmount from '@/Components/MoneyAmount.vue';
+import StockWorth from '@/Components/StockWorth.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
@@ -50,7 +51,9 @@ const typeLabel = (type: string) => (type === 'monthly' ? 'Mensuel' : 'Quotidien
             </div>
         </template>
 
-        <section class="grid gap-x-10 border-y py-2 md:grid-cols-2 xl:grid-cols-4" style="border-color: var(--mp-line)">
+        <StockWorth />
+
+        <section class="mt-8 grid gap-x-10 border-y py-2 md:grid-cols-2 xl:grid-cols-4" style="border-color: var(--mp-line)">
             <div class="mp-metric">
                 <div class="mp-metric-label">CA mois</div>
                 <MoneyAmount class="mt-2" :amount="overview?.ca_month" size="lg" />
