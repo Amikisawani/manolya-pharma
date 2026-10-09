@@ -228,8 +228,8 @@ class ImportInvoicePurchasesTest extends TestCase
             '--file' => $path,
         ])->assertSuccessful();
 
-        $this->assertSame(289, Product::query()->count());
-        $this->assertSame(296, Batch::query()->where('lot_number', 'like', 'ACH-%')->count());
+        $this->assertSame(288, Product::query()->count());
+        $this->assertSame(295, Batch::query()->where('lot_number', 'like', 'ACH-%')->count());
         $this->assertTrue(Supplier::query()->where('code', 'AFRICA')->exists());
         $this->assertTrue(Supplier::query()->where('code', 'PROMED')->exists());
         $this->assertTrue(Supplier::query()->where('code', 'CONFIANCE')->exists());
@@ -253,10 +253,58 @@ class ImportInvoicePurchasesTest extends TestCase
             '--tenant' => 'manolya-kinshasa',
         ])->assertSuccessful();
 
-        $this->assertSame(748, Product::query()->count());
-        $this->assertSame(766, Batch::query()->where('lot_number', 'like', 'ACH-%')->count());
+        $this->assertSame(814, Product::query()->count());
+        $this->assertSame(843, Batch::query()->where('lot_number', 'like', 'ACH-%')->count());
         $this->assertTrue(Supplier::query()->where('code', 'PHARMANS')->exists());
         $this->assertTrue(Supplier::query()->where('code', 'AFRICA')->exists());
         $this->assertTrue(Supplier::query()->where('code', 'CAISA')->exists());
+        $this->assertTrue(Supplier::query()->where('code', 'SANTEVIE')->exists());
+        $this->assertTrue(Supplier::query()->where('code', 'MEDICO')->exists());
+        $this->assertTrue(Supplier::query()->where('code', 'SHAHIL')->exists());
+
+        $dioral = Product::query()
+            ->whereRaw('LOWER(commercial_name) = ?', ['dioral (sro) 22 gr - 10 sachets'])
+            ->firstOrFail();
+        $this->assertEqualsWithDelta(3525000, (float) $dioral->purchase_price, 0.01);
+        $this->assertEqualsWithDelta(4230000, (float) $dioral->sale_price, 0.01);
+
+        $effortil = Product::query()
+            ->whereRaw('LOWER(commercial_name) = ?', ['effortil gttes 30 ml'])
+            ->firstOrFail();
+        $this->assertEqualsWithDelta(40648.64, (float) $effortil->purchase_price, 0.01);
+        $this->assertEqualsWithDelta(48778, (float) $effortil->sale_price, 0.01);
+        $this->assertFalse(
+            Product::query()->whereRaw('LOWER(commercial_name) = ?', ['efferel gouttes 30 ml'])->exists(),
+        );
+    }
+
+    public function test_blurry_compagnon_names_are_renamed_before_restock(): void
+    {
+        $this->seed();
+
+        $tenant = Tenant::query()->where('slug', 'manolya-kinshasa')->firstOrFail();
+        Product::query()->create([
+            'tenant_id' => $tenant->id,
+            'sku' => 'EFFEREL-GTTES-OLD',
+            'commercial_name' => 'Efferel gouttes 30 ml',
+            'purchase_price' => '1',
+            'sale_price' => '2',
+            'currency_code' => 'CDF',
+            'min_stock' => 0,
+            'critical_stock' => 0,
+            'allocation_strategy' => 'fefo',
+        ]);
+
+        $this->artisan('manolya:import-invoice-purchases', [
+            '--tenant' => 'manolya-kinshasa',
+            '--file' => database_path('data/manolya_invoices_2026-09-29.json'),
+        ])->assertSuccessful();
+
+        $this->assertSame(288, Product::query()->count());
+        $renamed = Product::query()->where('sku', 'EFFEREL-GTTES-OLD')->firstOrFail();
+        $this->assertSame('Effortil gttes 30 ml', $renamed->commercial_name);
+        $this->assertEqualsWithDelta(40648.64, (float) $renamed->purchase_price, 0.01);
+        $this->assertEqualsWithDelta(48778, (float) $renamed->sale_price, 0.01);
+        $this->assertGreaterThan(0, (float) Batch::query()->where('product_id', $renamed->id)->sum('quantity_on_hand'));
     }
 }

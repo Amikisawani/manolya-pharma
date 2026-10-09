@@ -27,6 +27,38 @@ final class InvoicePurchaseImporter
 
     public const DEFAULT_EXPIRES_AT = '2027-09-22';
 
+    /**
+     * @var array<string, string>
+     */
+    private const NAME_CORRECTIONS = [
+        'Oc Rimelar 60ml pâte susp' => 'Co Rimetar 60ml poudre susp',
+        'Oc Rimelar adulte 80mg/480mg 6 cés' => 'Co Rimetar adulte 80mg/480mg 6 cés',
+        'Dola-CR 10 caps' => 'Dola-cr 10 caps',
+        'Dolo-CI spray' => 'Dola-cr spray',
+        'Dolangel plus 30g' => 'Dolagel plus 30g',
+        'Efferel gouttes 30 ml' => 'Effortil gttes 30 ml',
+        'Falcadox 3 cés' => 'Falcidox 3 cés',
+        'Femmax 3x10 caps' => 'Femmex 3x10 caps',
+        'Haematogel 3x10 caps' => 'Haemacel 3x10 caps',
+        'Haematogel solution 500 ml' => 'Haemacel solution 500 ml',
+        'Hommax 3x10 caps' => 'Hommex 3x10 caps',
+        'Iridiam 40/240mg forte 12 cés disp' => 'Indalum 40/240mg forte 12ces disp',
+        'Iridiam 80/480mg DP 6 cés disp' => 'Indalum 80/480mg Dp 6 ces disp',
+        'Lather sirop 60 ml' => 'Luther sp 60 ml',
+        'Melafax 3 cés' => 'Matadox 3 cés',
+        'Maxitass sirop' => 'Maxilase sp',
+        'Méfloquine gouttes 0,25mg/ml 10ml' => 'Metherine gtte 0.25mg/ml 10ml',
+        'Mifethinol 100 ml sirop adulte' => 'Niferhinol 100 ml sp ad',
+        'Mifethinol sirop bébé et enfant' => 'Niferhinol sp bb et enf',
+        'Paragon inj. 10ml (paracétamol)' => 'Paragan inj. 100ml (paracétamol)',
+        'Perfac inj 1g IV 10ml (paracétamol)' => 'Perfac inj 1g iv 100ml (paracétamol)',
+        'Pantrix 1g (ceftriaxone + sulbactam)' => 'Phatrix 1g (ceftriaxone + eau distillée)',
+        'Sefonac 10 cés' => 'Seronac 10 cés',
+        'Spiditon Dakin 60 ml' => 'Solution dakin 60 ml',
+        'Zenitel 400mg 1 cés' => 'Zentel 400 MG 1 cés',
+        'Zenitel sirop' => 'Zentel sp',
+    ];
+
     public function __construct(
         private readonly StockMutator $stockMutator,
     ) {}
@@ -138,6 +170,7 @@ final class InvoicePurchaseImporter
         )->toDateString();
 
         app()->instance('current_tenant_id', (string) $tenant->id);
+        $this->renameKnownProducts($tenant);
 
         $warehouse = $this->resolveWarehouse($tenant, $options['warehouse_id'] ?? null);
         $userId = $this->resolveUserId($tenant, $options['user_id'] ?? null);
@@ -387,6 +420,37 @@ final class InvoicePurchaseImporter
         return $owner?->id;
     }
 
+    /**
+     * Photo du 29/09 relue : le premier passage avait déformé quelques noms Compagnon.
+     * On renomme le produit déjà en catalogue pour ne pas en créer un second.
+     */
+    private function renameKnownProducts(Tenant $tenant): void
+    {
+        foreach (self::NAME_CORRECTIONS as $from => $to) {
+            $product = Product::query()
+                ->where('tenant_id', $tenant->id)
+                ->whereRaw('LOWER(commercial_name) = ?', [mb_strtolower($from)])
+                ->first();
+
+            if ($product === null) {
+                continue;
+            }
+
+            $taken = Product::query()
+                ->where('tenant_id', $tenant->id)
+                ->whereRaw('LOWER(commercial_name) = ?', [mb_strtolower($to)])
+                ->whereKeyNot($product->id)
+                ->exists();
+
+            if ($taken) {
+                continue;
+            }
+
+            $product->commercial_name = $to;
+            $product->save();
+        }
+    }
+
     private function firstOrCreateSupplier(Tenant $tenant, string $name): Supplier
     {
         $existing = Supplier::query()
@@ -415,6 +479,9 @@ final class InvoicePurchaseImporter
             'promed gros' => 'PROMED',
             'la confiance' => 'CONFIANCE',
             'caisa pharma international' => 'CAISA',
+            'santevie sarl' => 'SANTEVIE',
+            'depot pharmaceutique medico plus' => 'MEDICO',
+            'shahil kins' => 'SHAHIL',
         ];
 
         $base = $known[mb_strtolower($name)]
