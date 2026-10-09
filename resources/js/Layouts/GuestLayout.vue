@@ -10,7 +10,8 @@ import { Link } from '@inertiajs/vue3';
                 <BrandLockup size="lg" />
             </Link>
             <p class="mt-8 max-w-md text-sm leading-relaxed text-[color:var(--mp-muted)]">
-                Gestion d’officine claire et traçable.
+                Espace équipe — caisse, stock et clôtures.
+                <a :href="route('storefront.home')" class="text-[color:var(--mp-accent)]">Retour au site</a>
             </p>
         </div>
 
